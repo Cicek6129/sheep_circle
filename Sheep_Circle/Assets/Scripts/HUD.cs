@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SheepCircle
 {
-    /// <summary>Title card, score readout and the game-over card.</summary>
+    /// <summary>Title card, score readout, level info and the game-over card.</summary>
     public class HUD : MonoBehaviour
     {
         [SerializeField] TMP_Text scoreText;
@@ -19,6 +19,16 @@ namespace SheepCircle
         [SerializeField] GameObject startPanel;
         [SerializeField] RectTransform startButton;
         [SerializeField] TMP_Text startBestText;
+
+        [Header("Level")]
+        [Tooltip("Displays the current level number (e.g. 'LEVEL 3'). Optional.")]
+        [SerializeField] TMP_Text levelText;
+        [Tooltip("Displays progress like '2 / 6'. Optional.")]
+        [SerializeField] TMP_Text progressText;
+        [Tooltip("Panel shown when the player clears a level. Optional.")]
+        [SerializeField] GameObject levelCompletePanel;
+        [Tooltip("Title on the level-complete panel (e.g. 'LEVEL 3 TAMAMLANDI!'). Optional.")]
+        [SerializeField] TMP_Text levelCompleteTitle;
 
         void Update()
         {
@@ -52,13 +62,38 @@ namespace SheepCircle
 
         public void SetBest(int best) => bestText.text = $"REKOR  {best}";
 
+        // ----------------------------------------------------------- level info
+
+        public void SetLevel(int level)
+        {
+            if (levelText != null) levelText.text = $"LEVEL {level}";
+        }
+
+        public void SetProgress(int placed, int total)
+        {
+            if (progressText != null) progressText.text = $"{placed} / {total}";
+        }
+
+        public void ShowLevelComplete(int level)
+        {
+            if (levelCompletePanel != null) levelCompletePanel.SetActive(true);
+            if (levelCompleteTitle != null) levelCompleteTitle.text = $"LEVEL {level} TAMAMLANDI!";
+        }
+
+        public void HideLevelComplete()
+        {
+            if (levelCompletePanel != null) levelCompletePanel.SetActive(false);
+        }
+
+        // ----------------------------------------------------------- game over
+
         public void HideGameOver() => gameOverPanel.SetActive(false);
 
-        public void ShowGameOver(string reason, int score)
+        public void ShowGameOver(string reason, int placed)
         {
             gameOverPanel.SetActive(true);
             gameOverTitle.text = reason;
-            gameOverBody.text = $"{score} hayvan agila girdi\n\nTekrar icin tikla";
+            gameOverBody.text = $"{placed} hayvan yerlesti\n\nTekrar icin tikla";
         }
     }
 }

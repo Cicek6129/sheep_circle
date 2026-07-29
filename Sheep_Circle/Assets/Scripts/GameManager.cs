@@ -6,8 +6,9 @@ using UnityEngine.SceneManagement;
 namespace SheepCircle
 {
     /// <summary>
-    /// Owns the round: spawns animals into the lane queues, releases them onto the
-    /// ring when the player taps, checks for crashes and scales the difficulty.
+    /// Drives the game: spawns the initial circling animals, fills the entry
+    /// queue, lets the player release them onto the ring, detects crashes and
+    /// manages the level progression.
     /// </summary>
     public class GameManager : MonoBehaviour
     {
@@ -16,7 +17,7 @@ namespace SheepCircle
         [SerializeField] Animal animalPrefab;
         [SerializeField] Burst burstPrefab;
         [SerializeField] Burst dustPrefab;
-        [SerializeField] EntryLane[] lanes;
+        [SerializeField] EntryLane entryLane;
         [SerializeField] Transform animalParent;
         [SerializeField] HUD hud;
         [SerializeField] new Camera camera;
@@ -24,24 +25,28 @@ namespace SheepCircle
         [Header("Animals")]
         [SerializeField] AnimalKind[] kinds;
 
-        [Header("Difficulty")]
-        [SerializeField] float startRingSpeed = 42f;
-        [SerializeField] float ringSpeedPerScore = 1.15f;
-        [SerializeField] float maxRingSpeed = 108f;
-        [SerializeField] float startSpawnInterval = 1.9f;
-        [SerializeField] float spawnRampPerScore = 0.03f;
-        [SerializeField] float minSpawnInterval = 0.6f;
+        [Header("Levels")]
+        [Tooltip("Hand-authored levels. Beyond these the game generates levels procedurally.")]
+        [SerializeField] LevelData[] levels = new LevelData[]
+        {
+            new LevelData { initialAnimalCount = 4, animalsToSend = 4, ringSpeed = 35f },
+            new LevelData { initialAnimalCount = 5, animalsToSend = 5, ringSpeed = 40f },
+            new LevelData { initialAnimalCount = 6, animalsToSend = 6, ringSpeed = 45f },
+            new LevelData { initialAnimalCount = 7, animalsToSend = 6, ringSpeed = 50f },
+            new LevelData { initialAnimalCount = 8, animalsToSend = 7, ringSpeed = 55f, allowShepherd = true },
+            new LevelData { initialAnimalCount = 9, animalsToSend = 8, ringSpeed = 60f, allowShepherd = true },
+            new LevelData { initialAnimalCount = 10, animalsToSend = 8, ringSpeed = 65f, allowShepherd = true },
+        };
 
         [Header("Rules")]
         [SerializeField] int maxQueuePerLane = 4;
         [SerializeField] float releaseCooldown = 0.34f;
         [SerializeField] float restartDelay = 0.6f;
-        [Tooltip("Shortest arc an animal is allowed to travel before leaving the ring.")]
-        [SerializeField] float minExitArc = 60f;
-        [Tooltip("No shepherd shows up before this score, and never two at once.")]
-        [SerializeField] int shepherdMinScore = 5;
+        [SerializeField] float levelCompleteDelay = 1.5f;
+        [Tooltip("Minimum level index (0-based) before a shepherd can appear.")]
+        [SerializeField] int shepherdMinLevel = 4;
 
-        const string BestScoreKey = "SheepCircle.Best";
+        const string BestLevelKey = "SheepCircle.BestLevel";
 
         /// <summary>Survives the scene reload a restart does, so the title card
         /// greets the player once per launch instead of after every crash.</summary>
@@ -50,41 +55,63 @@ namespace SheepCircle
         readonly List<Animal> animals = new List<Animal>();
         readonly List<Animal> finished = new List<Animal>();
 
-        float[] laneCooldown;
-        float spawnTimer;
+        float cooldownTimer;
         float gameOverTimer;
-        int score;
+        float levelCompleteTimer;
+        int currentLevel;
+        int animalsPlaced;
+        int regularAnimalsCreated;
+        int totalRegularToSend;
         int shepherdsAlive;
+        bool shepherdCreatedThisLevel;
         bool gameOver;
+        bool levelComplete;
         bool waitingToStart;
 
         public RingGeometry Geometry => geometry;
 
-        float RingSpeed => Mathf.Min(maxRingSpeed, startRingSpeed + score * ringSpeedPerScore);
-        float SpawnInterval => Mathf.Max(minSpawnInterval, startSpawnInterval - score * spawnRampPerScore);
+        // ----------------------------------------------------------- level data
+
+        LevelData GetLevelData(int level)
+        {
+            if (levels != null && level < levels.Length) return levels[level];
+
+            // Procedural generation beyond hand-authored levels.
+            return new LevelData
+            {
+                initialAnimalCount = Mathf.Min(18, 6 + level),
+                animalsToSend = Mathf.Min(14, 4 + level),
+                ringSpeed = Mathf.Min(120f, 35f + level * 6f),
+                allowShepherd = level >= shepherdMinLevel
+            };
+        }
+
+        // ----------------------------------------------------------- lifecycle
 
         void Awake()
         {
             if (camera == null) camera = Camera.main;
-            laneCooldown = new float[lanes.Length];
         }
 
         void Start()
         {
-            score = 0;
-            spawnTimer = 0.4f;
+            currentLevel = 0;
 
-            int best = PlayerPrefs.GetInt(BestScoreKey, 0);
+            int bestLevel = PlayerPrefs.GetInt(BestLevelKey, 0);
             hud.SetScore(0);
-            hud.SetBest(best);
+            hud.SetBest(bestLevel);
             hud.HideGameOver();
 
-            // One waiting animal per lane so the board is never empty at the start.
-            for (int i = 0; i < lanes.Length; i++) SpawnInto(lanes[i]);
-
             waitingToStart = !titleShown;
-            if (waitingToStart) hud.ShowStart(best);
-            else hud.HideStart();
+            if (waitingToStart)
+            {
+                hud.ShowStart(bestLevel);
+            }
+            else
+            {
+                hud.HideStart();
+                LoadLevel(0);
+            }
         }
 
         void Update()
@@ -93,8 +120,6 @@ namespace SheepCircle
 
             if (waitingToStart)
             {
-                // Let the queues walk up to their slots so the board behind the
-                // title card is alive, but hold off spawning and taps.
                 TickAnimals(dt);
 
                 if (AnyPressed())
@@ -102,53 +127,157 @@ namespace SheepCircle
                     waitingToStart = false;
                     titleShown = true;
                     hud.HideStart();
+                    LoadLevel(0);
                 }
+                return;
+            }
+
+            if (levelComplete)
+            {
+                TickAnimals(dt);
+                levelCompleteTimer -= dt;
+                if (levelCompleteTimer <= 0f && AnyPressed())
+                    LoadLevel(currentLevel + 1);
                 return;
             }
 
             if (gameOver)
             {
                 gameOverTimer -= dt;
-                if (gameOverTimer <= 0f && AnyPressed()) Restart();
+                if (gameOverTimer <= 0f && AnyPressed()) RestartLevel();
                 return;
             }
 
             HandleInput();
-            UpdateSpawning(dt);
             TickAnimals(dt);
             CheckHerding();
             CheckCrashes();
+            ClearFrameFlags();
 
-            for (int i = 0; i < laneCooldown.Length; i++)
-                laneCooldown[i] = Mathf.Max(0f, laneCooldown[i] - dt);
+            cooldownTimer = Mathf.Max(0f, cooldownTimer - dt);
         }
 
-        // ---------------------------------------------------------------- input
+        // ----------------------------------------------------------- levels
+
+        void LoadLevel(int level)
+        {
+            currentLevel = level;
+            animalsPlaced = 0;
+            regularAnimalsCreated = 0;
+            shepherdsAlive = 0;
+            shepherdCreatedThisLevel = false;
+            cooldownTimer = 0f;
+            gameOverTimer = 0f;
+            levelCompleteTimer = 0f;
+            gameOver = false;
+            levelComplete = false;
+
+            // Destroy every animal still alive from the previous level.
+            for (int i = animals.Count - 1; i >= 0; i--)
+                if (animals[i] != null) Destroy(animals[i].gameObject);
+            animals.Clear();
+
+            if (entryLane != null) entryLane.Clear();
+
+            LevelData data = GetLevelData(level);
+            totalRegularToSend = data.animalsToSend;
+
+            hud.SetLevel(level + 1);
+            hud.SetProgress(0, totalRegularToSend);
+            hud.HideLevelComplete();
+            hud.HideGameOver();
+
+            SpawnInitialAnimals(data);
+            RefillQueue(data);
+        }
+
+        void SpawnInitialAnimals(LevelData data)
+        {
+            float angleStep = 360f / data.initialAnimalCount;
+            for (int i = 0; i < data.initialAnimalCount; i++)
+            {
+                AnimalKind kind = PickNonShepherdKind();
+                Animal animal = Instantiate(animalPrefab, animalParent);
+                animal.SetupAsCircling(kind, i * angleStep, geometry);
+                animals.Add(animal);
+            }
+        }
+
+        void RefillQueue(LevelData data)
+        {
+            while (entryLane != null && entryLane.QueueCount < maxQueuePerLane)
+            {
+                bool allRegularDone = regularAnimalsCreated >= totalRegularToSend;
+                bool shepherdDone = shepherdCreatedThisLevel || !data.allowShepherd;
+
+                if (allRegularDone && shepherdDone) break;
+
+                // Maybe inject the shepherd once some regulars have been created.
+                if (data.allowShepherd && !shepherdCreatedThisLevel
+                    && shepherdsAlive == 0 && regularAnimalsCreated >= 2
+                    && Random.value < 0.2f)
+                {
+                    AnimalKind sk = PickShepherdKind();
+                    if (sk != null)
+                    {
+                        SpawnQueueAnimal(sk);
+                        shepherdCreatedThisLevel = true;
+                        shepherdsAlive++;
+                        continue;
+                    }
+                }
+
+                if (!allRegularDone)
+                {
+                    SpawnQueueAnimal(PickNonShepherdKind());
+                    regularAnimalsCreated++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        void SpawnQueueAnimal(AnimalKind kind)
+        {
+            Animal animal = Instantiate(animalPrefab, animalParent);
+            animal.Setup(kind, RingGeometry.ENTRY_LANE, entryLane.QueueCount, geometry);
+            entryLane.Enqueue(animal);
+            animals.Add(animal);
+        }
+
+        void LevelCompleted()
+        {
+            if (levelComplete) return;
+
+            levelComplete = true;
+            levelCompleteTimer = levelCompleteDelay;
+
+            int best = PlayerPrefs.GetInt(BestLevelKey, 0);
+            if (currentLevel + 1 > best)
+            {
+                best = currentLevel + 1;
+                PlayerPrefs.SetInt(BestLevelKey, best);
+                PlayerPrefs.Save();
+            }
+
+            hud.SetBest(best);
+            hud.ShowLevelComplete(currentLevel + 1);
+        }
+
+        // ----------------------------------------------------------- input
 
         void HandleInput()
         {
             Pointer pointer = Pointer.current;
             if (pointer != null && pointer.press.wasPressedThisFrame)
-            {
-                Vector2 world = camera.ScreenToWorldPoint(pointer.position.ReadValue());
-                Collider2D hit = Physics2D.OverlapPoint(world);
-
-                EntryLane lane = null;
-                if (hit != null) hit.TryGetComponent(out lane);
-
-                // Tapping anywhere else still counts: use whichever road is closest.
-                if (lane == null) lane = LaneByIndex(geometry.NearestLane(world));
-
-                TryRelease(lane);
-            }
+                TryRelease();
 
             Keyboard keys = Keyboard.current;
             if (keys == null) return;
 
-            if (keys.digit1Key.wasPressedThisFrame) TryRelease(LaneByIndex(0));
-            if (keys.digit2Key.wasPressedThisFrame) TryRelease(LaneByIndex(1));
-            if (keys.digit3Key.wasPressedThisFrame) TryRelease(LaneByIndex(2));
-            if (keys.digit4Key.wasPressedThisFrame) TryRelease(LaneByIndex(3));
+            if (keys.spaceKey.wasPressedThisFrame) TryRelease();
         }
 
         /// <summary>Dismisses the title card and, later, the game-over card. The
@@ -163,143 +292,88 @@ namespace SheepCircle
             return keys != null && (keys.rKey.wasPressedThisFrame || keys.spaceKey.wasPressedThisFrame);
         }
 
-        EntryLane LaneByIndex(int index)
+        void TryRelease()
         {
-            for (int i = 0; i < lanes.Length; i++)
-                if (lanes[i].LaneIndex == index) return lanes[i];
-            return null;
-        }
+            if (entryLane == null || !entryLane.HasWaiting) return;
+            if (cooldownTimer > 0f) return;
 
-        void TryRelease(EntryLane lane)
-        {
-            if (lane == null || !lane.HasWaiting) return;
-
-            int slot = System.Array.IndexOf(lanes, lane);
-            if (slot < 0 || laneCooldown[slot] > 0f) return;
-
-            Animal animal = lane.Dequeue();
+            Animal animal = entryLane.Dequeue();
             if (animal == null) return;
 
-            // The shepherd loops all the way round and leaves by his own road.
-            int exit = animal.IsShepherd ? lane.LaneIndex : PickExitLane(lane.LaneIndex);
+            // Shepherd exits from the top, regular animals stay on the ring.
+            int exit = animal.IsShepherd ? RingGeometry.EXIT_LANE : RingGeometry.ENTRY_LANE;
             animal.Release(exit);
 
-            // Kicked up where it was standing, i.e. behind it once it moves off.
-            // This is the only immediate answer the player gets to their tap, so
-            // it fires on release rather than when the animal reaches the ring.
-            Vector2 behind = geometry.LaneDir(lane.LaneIndex) * (animal.Kind.size * 0.45f);
+            // Dust puff behind the animal as it moves off.
+            Vector2 behind = geometry.LaneDir(RingGeometry.ENTRY_LANE) * (animal.Kind.size * 0.45f);
             SpawnEffect(dustPrefab, animal.Position + behind, animal.Kind.size);
 
-            // Hold the lane until this one is clear of the approach, otherwise a
-            // slow cow would be rear-ended by whatever the player taps next.
-            laneCooldown[slot] = Mathf.Max(releaseCooldown, animal.MergeSeconds(geometry) + 0.06f);
+            cooldownTimer = Mathf.Max(releaseCooldown, animal.MergeSeconds(geometry) + 0.06f);
+
+            // Refill the queue with the next waiting animal.
+            RefillQueue(GetLevelData(currentLevel));
         }
 
-        int PickExitLane(int fromLane)
+        // ----------------------------------------------------------- kind picking
+
+        AnimalKind PickNonShepherdKind()
         {
-            List<int> options = new List<int>();
-            for (int i = 0; i < geometry.laneCount; i++)
-                if (geometry.ArcBetween(fromLane, i) >= minExitArc) options.Add(i);
-
-            if (options.Count == 0) return fromLane;
-            return options[Random.Range(0, options.Count)];
-        }
-
-        // -------------------------------------------------------------- spawning
-
-        void UpdateSpawning(float dt)
-        {
-            spawnTimer -= dt;
-            if (spawnTimer > 0f) return;
-
-            spawnTimer = SpawnInterval;
-
-            EntryLane target = EmptiestLane();
-            if (target == null)
-            {
-                EndGame("YOL TIKANDI!");
-                return;
-            }
-
-            SpawnInto(target);
-        }
-
-        EntryLane EmptiestLane()
-        {
-            EntryLane best = null;
-            int bestCount = int.MaxValue;
-
-            for (int i = 0; i < lanes.Length; i++)
-            {
-                int count = lanes[i].QueueCount;
-                if (count >= maxQueuePerLane) continue;
-
-                // Random tiebreak so the queues do not fill in a fixed order.
-                if (count < bestCount || (count == bestCount && Random.value < 0.5f))
-                {
-                    bestCount = count;
-                    best = lanes[i];
-                }
-            }
-
-            return best;
-        }
-
-        void SpawnInto(EntryLane lane)
-        {
-            AnimalKind kind = PickKind();
-
-            Animal animal = Instantiate(animalPrefab, animalParent);
-            animal.Setup(kind, lane.LaneIndex, lane.QueueCount, geometry);
-            lane.Enqueue(animal);
-            animals.Add(animal);
-
-            if (kind.isShepherd) shepherdsAlive++;
-        }
-
-        AnimalKind PickKind()
-        {
-            bool allowShepherd = score >= shepherdMinScore && shepherdsAlive == 0;
-
             float total = 0f;
             for (int i = 0; i < kinds.Length; i++)
-            {
-                if (kinds[i].isShepherd && !allowShepherd) continue;
-                total += kinds[i].spawnWeight;
-            }
+                if (!kinds[i].isShepherd) total += kinds[i].spawnWeight;
 
             float roll = Random.value * total;
             for (int i = 0; i < kinds.Length; i++)
             {
-                if (kinds[i].isShepherd && !allowShepherd) continue;
-
+                if (kinds[i].isShepherd) continue;
                 roll -= kinds[i].spawnWeight;
                 if (roll <= 0f) return kinds[i];
             }
 
-            // Fallback: first non-shepherd kind.
+            // Fallback.
             for (int i = 0; i < kinds.Length; i++)
                 if (!kinds[i].isShepherd) return kinds[i];
-
             return kinds[0];
         }
 
-        // ------------------------------------------------------------- simulation
+        AnimalKind PickShepherdKind()
+        {
+            for (int i = 0; i < kinds.Length; i++)
+                if (kinds[i].isShepherd) return kinds[i];
+            return null;
+        }
+
+        // ----------------------------------------------------------- simulation
 
         void TickAnimals(float dt)
         {
-            float ringSpeed = RingSpeed;
+            LevelData data = GetLevelData(currentLevel);
+            float ringSpeed = data.ringSpeed;
             finished.Clear();
 
             for (int i = 0; i < animals.Count; i++)
             {
-                // Herded animals are driven by the shepherd, not by themselves.
                 if (animals[i].State == AnimalState.Herded) continue;
-                if (animals[i].Tick(dt, geometry, ringSpeed)) finished.Add(animals[i]);
+
+                AnimalState prev = animals[i].State;
+                if (animals[i].Tick(dt, geometry, ringSpeed))
+                    finished.Add(animals[i]);
+
+                // A regular animal just landed on the ring.
+                if (prev == AnimalState.Entering
+                    && animals[i].State == AnimalState.CirclingInside
+                    && !animals[i].IsShepherd)
+                {
+                    animalsPlaced++;
+                    hud.SetProgress(animalsPlaced, totalRegularToSend);
+                    hud.SetScore(animalsPlaced);
+
+                    if (animalsPlaced >= totalRegularToSend)
+                        LevelCompleted();
+                }
             }
 
             for (int i = 0; i < finished.Count; i++) Finish(finished[i]);
-            if (finished.Count > 0) hud.SetScore(score);
         }
 
         void Finish(Animal animal)
@@ -311,13 +385,8 @@ namespace SheepCircle
                 {
                     animals.Remove(herd[i]);
                     Destroy(herd[i].gameObject);
-                    score++;
                 }
                 shepherdsAlive--;
-            }
-            else
-            {
-                score++;
             }
 
             animals.Remove(animal);
@@ -356,17 +425,13 @@ namespace SheepCircle
                 {
                     if (!animals[j].CanCrash) continue;
 
-                    // A crash is always someone merging badly. Two animals already
-                    // circling travel at the same speed, so they can never touch.
+                    // At least one of them must be merging - two animals that are
+                    // already circling at the same speed can never catch each other.
                     if (!animals[i].IsMerging && !animals[j].IsMerging) continue;
 
                     float reach = animals[i].CollisionRadius + animals[j].CollisionRadius;
                     if ((animals[i].Position - animals[j].Position).sqrMagnitude > reach * reach) continue;
 
-                    // Burst goes where they actually met, sized to the pair, so a
-                    // cow taking out a chicken lands heavier than two chickens.
-                    // 1.9x covers both bodies with a little margin; much above
-                    // that and it spills off the ring onto the grass.
                     SpawnEffect(burstPrefab, (animals[i].Position + animals[j].Position) * 0.5f, reach * 1.9f);
 
                     // Invariant casing: the Turkish 'i' would otherwise become a
@@ -377,6 +442,12 @@ namespace SheepCircle
             }
         }
 
+        void ClearFrameFlags()
+        {
+            for (int i = 0; i < animals.Count; i++)
+                animals[i].ClearFrameFlags();
+        }
+
         void SpawnEffect(Burst prefab, Vector2 at, float size)
         {
             if (prefab == null) return;
@@ -385,7 +456,7 @@ namespace SheepCircle
             effect.Play(at, size);
         }
 
-        // ------------------------------------------------------------- game state
+        // ----------------------------------------------------------- game state
 
         void EndGame(string reason)
         {
@@ -394,19 +465,12 @@ namespace SheepCircle
             gameOver = true;
             gameOverTimer = restartDelay;
 
-            int best = PlayerPrefs.GetInt(BestScoreKey, 0);
-            if (score > best)
-            {
-                best = score;
-                PlayerPrefs.SetInt(BestScoreKey, best);
-                PlayerPrefs.Save();
-            }
-
+            int best = PlayerPrefs.GetInt(BestLevelKey, 0);
             hud.SetBest(best);
-            hud.ShowGameOver(reason, score);
+            hud.ShowGameOver(reason, animalsPlaced);
         }
 
-        void Restart() => SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        void RestartLevel() => LoadLevel(currentLevel);
 
 #if UNITY_EDITOR
         void OnDrawGizmos()

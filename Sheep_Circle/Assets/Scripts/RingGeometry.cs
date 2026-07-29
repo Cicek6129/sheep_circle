@@ -11,7 +11,12 @@ namespace SheepCircle
     public class RingGeometry
     {
         public float radius = 2.8f;
-        public int laneCount = 4;
+        public int laneCount = 2;
+
+        /// <summary>Bottom lane (270°). The player sends animals in from here.</summary>
+        public const int ENTRY_LANE = 1;
+        /// <summary>Top lane (90°). The shepherd exits with herded animals here.</summary>
+        public const int EXIT_LANE = 0;
 
         [Tooltip("Angular gap between a lane's merge point and its exit point.")]
         public float laneSplitDeg = 10f;
