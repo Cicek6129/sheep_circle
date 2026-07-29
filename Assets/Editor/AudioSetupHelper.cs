@@ -48,11 +48,11 @@ namespace SheepCircle
                 if (soundOn != null) soundImg.sprite = soundOn;
                 
                 var rect = soundBtn.GetComponent<RectTransform>();
-                // Sol üst köşe
-                rect.anchorMin = new Vector2(0f, 1f);
-                rect.anchorMax = new Vector2(0f, 1f);
+                // Sağ üst köşe
+                rect.anchorMin = new Vector2(1f, 1f);
+                rect.anchorMax = new Vector2(1f, 1f);
                 rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.anchoredPosition = new Vector2(70f, -70f);
+                rect.anchoredPosition = new Vector2(-70f, -70f);
                 rect.sizeDelta = new Vector2(90f, 90f);
                 soundBtn.transform.SetAsLastSibling(); // En üstte görünsün
 
