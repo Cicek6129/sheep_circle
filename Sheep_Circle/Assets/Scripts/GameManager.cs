@@ -14,6 +14,8 @@ namespace SheepCircle
         [Header("Scene refs")]
         [SerializeField] RingGeometry geometry = new RingGeometry();
         [SerializeField] Animal animalPrefab;
+        [SerializeField] Burst burstPrefab;
+        [SerializeField] Burst dustPrefab;
         [SerializeField] EntryLane[] lanes;
         [SerializeField] Transform animalParent;
         [SerializeField] HUD hud;
@@ -41,6 +43,10 @@ namespace SheepCircle
 
         const string BestScoreKey = "SheepCircle.Best";
 
+        /// <summary>Survives the scene reload a restart does, so the title card
+        /// greets the player once per launch instead of after every crash.</summary>
+        static bool titleShown;
+
         readonly List<Animal> animals = new List<Animal>();
         readonly List<Animal> finished = new List<Animal>();
 
@@ -50,6 +56,7 @@ namespace SheepCircle
         int score;
         int shepherdsAlive;
         bool gameOver;
+        bool waitingToStart;
 
         public RingGeometry Geometry => geometry;
 
@@ -66,22 +73,43 @@ namespace SheepCircle
         {
             score = 0;
             spawnTimer = 0.4f;
+
+            int best = PlayerPrefs.GetInt(BestScoreKey, 0);
             hud.SetScore(0);
-            hud.SetBest(PlayerPrefs.GetInt(BestScoreKey, 0));
+            hud.SetBest(best);
             hud.HideGameOver();
 
             // One waiting animal per lane so the board is never empty at the start.
             for (int i = 0; i < lanes.Length; i++) SpawnInto(lanes[i]);
+
+            waitingToStart = !titleShown;
+            if (waitingToStart) hud.ShowStart(best);
+            else hud.HideStart();
         }
 
         void Update()
         {
             float dt = Time.deltaTime;
 
+            if (waitingToStart)
+            {
+                // Let the queues walk up to their slots so the board behind the
+                // title card is alive, but hold off spawning and taps.
+                TickAnimals(dt);
+
+                if (AnyPressed())
+                {
+                    waitingToStart = false;
+                    titleShown = true;
+                    hud.HideStart();
+                }
+                return;
+            }
+
             if (gameOver)
             {
                 gameOverTimer -= dt;
-                if (gameOverTimer <= 0f && RestartPressed()) Restart();
+                if (gameOverTimer <= 0f && AnyPressed()) Restart();
                 return;
             }
 
@@ -123,7 +151,10 @@ namespace SheepCircle
             if (keys.digit4Key.wasPressedThisFrame) TryRelease(LaneByIndex(3));
         }
 
-        bool RestartPressed()
+        /// <summary>Dismisses the title card and, later, the game-over card. The
+        /// press is swallowed here because Update returns straight after, so the
+        /// same tap can never also release an animal.</summary>
+        bool AnyPressed()
         {
             Pointer pointer = Pointer.current;
             if (pointer != null && pointer.press.wasPressedThisFrame) return true;
@@ -152,6 +183,12 @@ namespace SheepCircle
             // The shepherd loops all the way round and leaves by his own road.
             int exit = animal.IsShepherd ? lane.LaneIndex : PickExitLane(lane.LaneIndex);
             animal.Release(exit);
+
+            // Kicked up where it was standing, i.e. behind it once it moves off.
+            // This is the only immediate answer the player gets to their tap, so
+            // it fires on release rather than when the animal reaches the ring.
+            Vector2 behind = geometry.LaneDir(lane.LaneIndex) * (animal.Kind.size * 0.45f);
+            SpawnEffect(dustPrefab, animal.Position + behind, animal.Kind.size);
 
             // Hold the lane until this one is clear of the approach, otherwise a
             // slow cow would be rear-ended by whatever the player taps next.
@@ -326,12 +363,26 @@ namespace SheepCircle
                     float reach = animals[i].CollisionRadius + animals[j].CollisionRadius;
                     if ((animals[i].Position - animals[j].Position).sqrMagnitude > reach * reach) continue;
 
+                    // Burst goes where they actually met, sized to the pair, so a
+                    // cow taking out a chicken lands heavier than two chickens.
+                    // 1.9x covers both bodies with a little margin; much above
+                    // that and it spills off the ring onto the grass.
+                    SpawnEffect(burstPrefab, (animals[i].Position + animals[j].Position) * 0.5f, reach * 1.9f);
+
                     // Invariant casing: the Turkish 'i' would otherwise become a
                     // dotted capital that the default font atlas has no glyph for.
                     EndGame($"{animals[i].Kind.displayName.ToUpperInvariant()} ile {animals[j].Kind.displayName.ToUpperInvariant()} TOSLADI!");
                     return;
                 }
             }
+        }
+
+        void SpawnEffect(Burst prefab, Vector2 at, float size)
+        {
+            if (prefab == null) return;
+
+            Burst effect = Instantiate(prefab, animalParent);
+            effect.Play(at, size);
         }
 
         // ------------------------------------------------------------- game state

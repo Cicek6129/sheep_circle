@@ -314,6 +314,93 @@ colors, bold and readable at small size, square composition, 512x512
 
 ---
 
+## 5b. Giriş ekranı
+
+Giriş kartı kodda kuruldu (`GameSceneBuilder.BuildStartPanel`). Mevcut
+`panel_wood.png` ve `button_green.png` ile şimdiden çalışıyor; aşağıdakiler
+üretilirse otomatik devreye giriyor. **`logo.png` yoksa yerine TMP ile yazılmış
+"SHEEP CIRCLE" düşüyor**, yani hiçbiri üretilmese de ekran bozulmuyor.
+
+### Logo (`logo.png`) — tek gerçek eksik
+
+```
+Game logo lettering for a farm game. The words "SHEEP CIRCLE" on two lines,
+"SHEEP" on top and "CIRCLE" below, centered and the same width. Chunky rounded
+cartoon letters in cream white with a thick dark brown outline and a soft green
+shadow offset below them, the top word arcing slightly upward. A small fluffy
+white sheep head peeks over the top-right corner of the lettering.
+Flat 2D vector game art, bright and friendly, casual mobile farm game style,
+thick dark brown outlines matching the game's animals.
+
+Transparent background - no card, panel, banner or frame behind the letters.
+1024x512, nothing else in the image.
+
+Avoid: photorealism, 3D render, extra or misspelled words, background, frame,
+watermark, drop shadow on the canvas.
+```
+
+> **Uyarı:** üreteçler harf yazmakta kötü. "SHEEP CIRCLE" büyük ihtimalle ilk
+> denemede "SHEPP CIRLCE" gibi çıkacak. 5-6 varyant üretip harfleri tek tek
+> okuyarak seç. Düzgün çıkmazsa üzülme — koddaki yazı yedeği zaten iyi duruyor,
+> logoyu sonraya bırakabiliriz.
+
+### Maskot koyun (`mascot_sheep.png`)
+
+Giriş ekranındaki tepeden koyun tuhaf durur; kartta yüzü görünen bir koyun lazım.
+
+```
+A cute fluffy sheep standing and facing the viewer in a three-quarter view,
+cheerful expression with big friendly eyes and a small smile, cream-white woolly
+body made of soft rounded bumps, dark grey face, ears and legs.
+Flat 2D vector game art, thick dark brown outlines, simple cel shading, bright
+cheerful farm colors, casual mobile game style.
+Single character centered, fully transparent background, 512x512, NO shadow
+under the sheep, nothing else in the image.
+
+Avoid: top-down view, background, ground, drop shadow, text, multiple animals.
+```
+
+### UI ikonları (`icon_play.png`, `icon_sound_on.png`, `icon_sound_off.png`, `icon_restart.png`)
+
+Dördü de aynı kalıpla, `<ŞEY>` değişerek:
+
+```
+A simple solid white <ŞEY> icon, thick rounded strokes and soft rounded corners,
+flat 2D vector game UI icon, centered and filling most of the frame,
+fully transparent background, 256x256.
+
+Avoid: background circle or square, frame, text, gradient, shadow, 3D.
+```
+
+- `a play triangle pointing right` → `icon_play.png`
+- `a speaker with two curved sound waves` → `icon_sound_on.png`
+- `a speaker with a diagonal slash through it` → `icon_sound_off.png`
+- `a circular arrow forming a loop with an arrowhead` → `icon_restart.png`
+
+### Bulut (`cloud.png`) — opsiyonel süs
+
+```
+A small fluffy cartoon cloud, flat 2D vector game art, soft white with a pale
+blue-grey underside, thick dark outline, rounded bumpy top.
+Transparent background, 512x256, single cloud, nothing else.
+
+Avoid: sky, background, gradient, rain, text.
+```
+
+### Oyun ikonu / Poki kapağı (`icon_512.png`)
+
+```
+Mobile game icon: a fluffy white sheep seen from directly above, standing in the
+middle of a circular dirt roundabout on bright green grass, a small straw-hatted
+shepherd on the ring beside it. Flat 2D vector art, thick dark outlines, bright
+cheerful colors, bold shapes that stay readable when shrunk to a thumbnail,
+square composition filling the whole frame, 512x512.
+
+Avoid: text, logo, letters, border, frame, watermark, thin details.
+```
+
+---
+
 ## 6. Ses (opsiyonel — ElevenLabs SFX / benzeri)
 
 Kısa, loop'suz, mono, 44.1kHz:

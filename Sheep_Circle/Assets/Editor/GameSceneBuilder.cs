@@ -32,6 +32,8 @@ namespace SheepCircle.EditorTools
 
         const string ScenePath = "Assets/Scenes/Game.unity";
         const string PrefabPath = "Assets/Prefabs/Animal.prefab";
+        const string BurstPrefabPath = "Assets/Prefabs/Burst.prefab";
+        const string DustPrefabPath = "Assets/Prefabs/Dust.prefab";
         const string ArtDir = "Assets/Art";
 
         // How much world space one ground tile covers. The art is 512px, so a
@@ -50,7 +52,7 @@ namespace SheepCircle.EditorTools
 
         static Sprite circle, square, ring, island;
         static Sprite sheep, cow, goat, chicken, shepherd;
-        static Sprite grassTile, roadTile, shadowBlob;
+        static Sprite grassTile, roadTile, shadowBlob, crashBurst, dustPuff;
 
         [MenuItem("Sheep Circle/Rebuild Game Scene")]
         public static void Build()
@@ -87,6 +89,8 @@ namespace SheepCircle.EditorTools
             grassTile  = LoadSprite("grass_tile");
             roadTile   = LoadSprite("road_tile");
             shadowBlob = LoadSprite("shadow");
+            crashBurst = LoadSprite("crash_burst");
+            dustPuff   = LoadSprite("dust_puff");
 
             foreach (var pair in new (string, Sprite)[] {
                 ("sheep", sheep), ("cow", cow), ("goat", goat), ("chicken", chicken),
@@ -103,7 +107,14 @@ namespace SheepCircle.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             Animal prefab = BuildAnimalPrefab();
-            BuildBoard(prefab);
+
+            //                                          sprite      order  life  start  end  spin  hold
+            Burst burst = BuildEffectPrefab("Burst", BurstPrefabPath, crashBurst, 30, 0.70f, 0.45f, 1.30f, 22f, 0.35f);
+            // Order 8 puts the dust under the animal but over its shadow, so it
+            // reads as kicked up from beneath rather than pasted on top.
+            Burst dust = BuildEffectPrefab("Dust", DustPrefabPath, dustPuff, 8, 0.55f, 0.30f, 1.05f, 10f, 0.10f);
+
+            BuildBoard(prefab, burst, dust);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -138,6 +149,11 @@ namespace SheepCircle.EditorTools
             head.transform.localPosition = new Vector3(0.30f, 0f, 0f);
             head.transform.localScale = new Vector3(0.42f, 0.42f, 1f);
 
+            // Off in the prefab too, not just at runtime, so opening the asset
+            // does not show a stray black dot beside the animal.
+            head.SetActive(false);
+            patch.SetActive(false);
+
             var so = new SerializedObject(animal);
             so.FindProperty("body").objectReferenceValue = body.GetComponent<SpriteRenderer>();
             so.FindProperty("patch").objectReferenceValue = patch.GetComponent<SpriteRenderer>();
@@ -151,9 +167,37 @@ namespace SheepCircle.EditorTools
             return asset.GetComponent<Animal>();
         }
 
+        /// <summary>A one-shot Burst prefab. The crash wants to be loud and cover
+        /// the animals; the dust wants to be quick, soft and sit behind them.
+        /// Same component either way, only the numbers differ.</summary>
+        static Burst BuildEffectPrefab(string name, string path, Sprite sprite, int order,
+                                       float life, float startScale, float endScale,
+                                       float spin, float hold)
+        {
+            var root = new GameObject(name);
+            var burst = root.AddComponent<Burst>();
+
+            var sr = root.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = order;
+
+            var so = new SerializedObject(burst);
+            so.FindProperty("sprite").objectReferenceValue = sr;
+            so.FindProperty("life").floatValue = life;
+            so.FindProperty("startScale").floatValue = startScale;
+            so.FindProperty("endScale").floatValue = endScale;
+            so.FindProperty("maxSpin").floatValue = spin;
+            so.FindProperty("hold").floatValue = hold;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var asset = PrefabUtility.SaveAsPrefabAsset(root, path);
+            UnityEngine.Object.DestroyImmediate(root);
+            return asset.GetComponent<Burst>();
+        }
+
         // ------------------------------------------------------------- board
 
-        static void BuildBoard(Animal prefab)
+        static void BuildBoard(Animal prefab, Burst burstPrefab, Burst dustPrefab)
         {
             var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
             var cam = camGo.AddComponent<Camera>();
@@ -194,6 +238,8 @@ namespace SheepCircle.EditorTools
             so.FindProperty("geometry.exitDistance").floatValue = ExitDistance;
 
             so.FindProperty("animalPrefab").objectReferenceValue = prefab;
+            so.FindProperty("burstPrefab").objectReferenceValue = burstPrefab;
+            so.FindProperty("dustPrefab").objectReferenceValue = dustPrefab;
             so.FindProperty("animalParent").objectReferenceValue = animalParent;
             so.FindProperty("hud").objectReferenceValue = hud;
             so.FindProperty("camera").objectReferenceValue = cam;
@@ -265,14 +311,24 @@ namespace SheepCircle.EditorTools
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
 
-            var score = NewText("Score", canvasGo.transform, "0", 120f, Color.white);
+            // Everything that belongs to a round in progress, grouped so the
+            // title card can switch it off in one go.
+            var playHud = new GameObject("PlayHud", typeof(RectTransform));
+            playHud.transform.SetParent(canvasGo.transform, false);
+            var playRect = playHud.GetComponent<RectTransform>();
+            playRect.anchorMin = Vector2.zero;
+            playRect.anchorMax = Vector2.one;
+            playRect.offsetMin = Vector2.zero;
+            playRect.offsetMax = Vector2.zero;
+
+            var score = NewText("Score", playHud.transform, "0", 120f, Color.white);
             Anchor(score.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -110f), new Vector2(600f, 150f));
             score.fontStyle = FontStyles.Bold;
 
-            var best = NewText("Best", canvasGo.transform, "REKOR  0", 40f, new Color(1f, 1f, 1f, 0.75f));
+            var best = NewText("Best", playHud.transform, "REKOR  0", 40f, new Color(1f, 1f, 1f, 0.75f));
             Anchor(best.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -205f), new Vector2(600f, 60f));
 
-            var hint = NewText("Hint", canvasGo.transform,
+            var hint = NewText("Hint", playHud.transform,
                                "Yola tikla -> siradaki hayvan cembere girsin   |   1-4 tuslari", 34f,
                                new Color(1f, 1f, 1f, 0.65f));
             Anchor(hint.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 55f), new Vector2(1400f, 60f));
@@ -293,6 +349,10 @@ namespace SheepCircle.EditorTools
             var bodyText = NewText("Body", panel.transform, "", 46f, Color.white);
             Anchor(bodyText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -80f), new Vector2(1400f, 260f));
 
+            GameObject start = BuildStartPanel(canvasGo.transform,
+                                               out RectTransform playButton,
+                                               out TextMeshProUGUI startBest);
+
             var hud = canvasGo.AddComponent<HUD>();
             var so = new SerializedObject(hud);
             so.FindProperty("scoreText").objectReferenceValue = score;
@@ -300,13 +360,127 @@ namespace SheepCircle.EditorTools
             so.FindProperty("gameOverPanel").objectReferenceValue = panel;
             so.FindProperty("gameOverTitle").objectReferenceValue = title;
             so.FindProperty("gameOverBody").objectReferenceValue = bodyText;
+            so.FindProperty("playHud").objectReferenceValue = playHud;
+            so.FindProperty("startPanel").objectReferenceValue = start;
+            so.FindProperty("startButton").objectReferenceValue = playButton;
+            so.FindProperty("startBestText").objectReferenceValue = startBest;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             panel.SetActive(false);
             return hud;
         }
 
+        /// <summary>The card the player sees before the first round. Nothing on
+        /// it is clickable - GameManager starts on any tap - so it needs no
+        /// EventSystem, which the scene deliberately does without.</summary>
+        static GameObject BuildStartPanel(Transform canvas, out RectTransform playButton,
+                                          out TextMeshProUGUI bestLine)
+        {
+            var start = new GameObject("StartPanel", typeof(RectTransform));
+            start.transform.SetParent(canvas, false);
+
+            var rect = start.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            // Lighter than the game-over veil: the board should still read
+            // through it, since it is the best advert the game has.
+            start.AddComponent<Image>().color = new Color(0.05f, 0.09f, 0.06f, 0.58f);
+
+            // Card and button are sized from their own artwork's aspect, then the
+            // logo and button are stacked around the card. Redrawing the wooden
+            // sign at a different shape reflows the card instead of smearing it.
+            const float CardWidth = 520f;
+            const float ButtonWidth = 420f;
+            const float LogoHeight = 260f;
+            const float Gap = 30f;
+
+            Sprite wood = LoadSprite("panel_wood");
+            Sprite green = LoadSprite("button_green");
+
+            float cardH = CardWidth / Aspect(wood, 1.39f);
+            float buttonH = ButtonWidth / Aspect(green, 2.9f);
+
+            const float cardY = -25f;
+            float logoY = cardY + cardH * 0.5f + Gap + LogoHeight * 0.5f;
+            float buttonY = cardY - cardH * 0.5f - Gap - buttonH * 0.5f;
+
+            Sprite logo = LoadSprite("logo");
+            if (logo != null)
+            {
+                var img = NewImage("Logo", start.transform, logo, Color.white);
+                img.preserveAspect = true;
+                Anchor(img.rectTransform, Middle, new Vector2(0f, logoY), new Vector2(1000f, LogoHeight));
+            }
+            else
+            {
+                // Stand-in until logo.png exists; the layout is identical either way.
+                var word = NewText("Title", start.transform, "SHEEP CIRCLE", 118f,
+                                   new Color(1f, 0.97f, 0.87f));
+                word.fontStyle = FontStyles.Bold;
+                Anchor(word.rectTransform, Middle, new Vector2(0f, logoY), new Vector2(1400f, LogoHeight));
+            }
+
+            var card = NewImage("Card", start.transform, wood, new Color(1f, 1f, 1f, 0.97f));
+            Anchor(card.rectTransform, Middle, new Vector2(0f, cardY), new Vector2(CardWidth, cardH));
+
+            float inner = CardWidth - 70f;
+
+            var how = NewText("How", card.transform,
+                              "Yola tikla, siradaki\nhayvan cembere girsin", 40f,
+                              new Color(1f, 0.97f, 0.90f));
+            how.fontStyle = FontStyles.Bold;
+            Anchor(how.rectTransform, Middle, new Vector2(0f, cardH * 0.22f), new Vector2(inner, 150f));
+
+            var warn = NewText("Warn", card.transform, "Carpisirlarsa oyun biter", 34f,
+                               new Color(1f, 0.88f, 0.72f, 0.85f));
+            Anchor(warn.rectTransform, Middle, new Vector2(0f, -cardH * 0.02f), new Vector2(inner, 60f));
+
+            bestLine = NewText("StartBest", card.transform, "REKOR  0", 44f,
+                               new Color(1f, 0.83f, 0.35f));
+            bestLine.fontStyle = FontStyles.Bold;
+            Anchor(bestLine.rectTransform, Middle, new Vector2(0f, -cardH * 0.25f), new Vector2(inner, 70f));
+
+            var button = NewImage("PlayButton", start.transform, green, Color.white);
+            Anchor(button.rectTransform, Middle, new Vector2(0f, buttonY), new Vector2(ButtonWidth, buttonH));
+            playButton = button.rectTransform;
+
+            var label = NewText("Label", button.transform, "BASLA", 62f, Color.white);
+            label.fontStyle = FontStyles.Bold;
+            Anchor(label.rectTransform, Middle, new Vector2(0f, 2f), new Vector2(ButtonWidth - 40f, buttonH));
+
+            return start;
+        }
+
         // ----------------------------------------------------------- helpers
+
+        static readonly Vector2 Middle = new Vector2(0.5f, 0.5f);
+
+        static float Aspect(Sprite sprite, float fallback) =>
+            sprite != null ? sprite.rect.width / sprite.rect.height : fallback;
+
+        /// <summary>A UI image; falls back to a flat dark plate when the art it
+        /// wants has not been drawn yet, so the layout never collapses.</summary>
+        static Image NewImage(string name, Transform parent, Sprite sprite, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+
+            var img = go.AddComponent<Image>();
+            if (sprite != null)
+            {
+                img.sprite = sprite;
+                img.color = color;
+            }
+            else
+            {
+                img.color = new Color(0.16f, 0.13f, 0.10f, 0.92f);
+            }
+
+            return img;
+        }
 
         static Sprite LoadSprite(string name) =>
             AssetDatabase.LoadAssetAtPath<Sprite>($"{ArtDir}/{name}.png");
