@@ -201,6 +201,7 @@ namespace SheepCircle.EditorTools
         {
             var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
             var cam = camGo.AddComponent<Camera>();
+            camGo.AddComponent<AudioListener>();
             camGo.AddComponent<UniversalAdditionalCameraData>();
             cam.orthographic = true;
             cam.orthographicSize = CameraSize;
@@ -329,7 +330,7 @@ namespace SheepCircle.EditorTools
             Anchor(best.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -205f), new Vector2(600f, 60f));
 
             var hint = NewText("Hint", playHud.transform,
-                               "Yola tikla -> siradaki hayvan cembere girsin   |   1-4 tuslari", 34f,
+                               "Yola tıkla -> sıradaki hayvan çembere girsin   |   1-4 tuşları", 34f,
                                new Color(1f, 1f, 1f, 0.65f));
             Anchor(hint.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 55f), new Vector2(1400f, 60f));
 
@@ -349,9 +350,14 @@ namespace SheepCircle.EditorTools
             var bodyText = NewText("Body", panel.transform, "", 46f, Color.white);
             Anchor(bodyText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -80f), new Vector2(1400f, 260f));
 
+            var audioMgr = new GameObject("AudioManager");
+            audioMgr.AddComponent<AudioManager>();
+
             GameObject start = BuildStartPanel(canvasGo.transform,
                                                out RectTransform playButton,
-                                               out TextMeshProUGUI startBest);
+                                               out TextMeshProUGUI startBest,
+                                               out UnityEngine.UI.Image soundImg,
+                                               out Sprite soundOn, out Sprite soundOff);
 
             var hud = canvasGo.AddComponent<HUD>();
             var so = new SerializedObject(hud);
@@ -364,6 +370,9 @@ namespace SheepCircle.EditorTools
             so.FindProperty("startPanel").objectReferenceValue = start;
             so.FindProperty("startButton").objectReferenceValue = playButton;
             so.FindProperty("startBestText").objectReferenceValue = startBest;
+            so.FindProperty("soundButtonImage").objectReferenceValue = soundImg;
+            so.FindProperty("soundOnSprite").objectReferenceValue = soundOn;
+            so.FindProperty("soundOffSprite").objectReferenceValue = soundOff;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             panel.SetActive(false);
@@ -374,7 +383,9 @@ namespace SheepCircle.EditorTools
         /// it is clickable - GameManager starts on any tap - so it needs no
         /// EventSystem, which the scene deliberately does without.</summary>
         static GameObject BuildStartPanel(Transform canvas, out RectTransform playButton,
-                                          out TextMeshProUGUI bestLine)
+                                          out TextMeshProUGUI bestLine,
+                                          out UnityEngine.UI.Image soundImg,
+                                          out Sprite soundOn, out Sprite soundOff)
         {
             var start = new GameObject("StartPanel", typeof(RectTransform));
             start.transform.SetParent(canvas, false);
@@ -429,12 +440,12 @@ namespace SheepCircle.EditorTools
             float inner = CardWidth - 70f;
 
             var how = NewText("How", card.transform,
-                              "Yola tikla, siradaki\nhayvan cembere girsin", 40f,
+                              "Yola tıkla, sıradaki\nhayvan çembere girsin", 40f,
                               new Color(1f, 0.97f, 0.90f));
             how.fontStyle = FontStyles.Bold;
             Anchor(how.rectTransform, Middle, new Vector2(0f, cardH * 0.22f), new Vector2(inner, 150f));
 
-            var warn = NewText("Warn", card.transform, "Carpisirlarsa oyun biter", 34f,
+            var warn = NewText("Warn", card.transform, "Çarpışırlarsa oyun biter", 34f,
                                new Color(1f, 0.88f, 0.72f, 0.85f));
             Anchor(warn.rectTransform, Middle, new Vector2(0f, -cardH * 0.02f), new Vector2(inner, 60f));
 
@@ -447,9 +458,17 @@ namespace SheepCircle.EditorTools
             Anchor(button.rectTransform, Middle, new Vector2(0f, buttonY), new Vector2(ButtonWidth, buttonH));
             playButton = button.rectTransform;
 
-            var label = NewText("Label", button.transform, "BASLA", 62f, Color.white);
+            var label = NewText("Label", button.transform, "BAŞLA", 62f, Color.white);
             label.fontStyle = FontStyles.Bold;
             Anchor(label.rectTransform, Middle, new Vector2(0f, 2f), new Vector2(ButtonWidth - 40f, buttonH));
+
+            soundOn = LoadSprite("icon_sound_on");
+            soundOff = LoadSprite("icon_sound_off");
+            var soundBtn = new GameObject("SoundButton", typeof(RectTransform));
+            soundBtn.transform.SetParent(start.transform, false);
+            soundImg = soundBtn.AddComponent<Image>();
+            if (soundOn != null) soundImg.sprite = soundOn;
+            Anchor(soundImg.rectTransform, new Vector2(1f, 1f), new Vector2(-70f, -70f), new Vector2(80f, 80f));
 
             return start;
         }
