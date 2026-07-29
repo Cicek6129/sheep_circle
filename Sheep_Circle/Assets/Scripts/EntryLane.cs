@@ -33,7 +33,11 @@ namespace SheepCircle
 
             flashTimer -= Time.deltaTime;
             float t = Mathf.Clamp01(flashTimer / 0.18f);
-            road.color = Color.Lerp(roadBaseColor, roadBaseColor * 1.35f, t);
+
+            // Brighten toward white rather than multiplying: the road carries a
+            // texture now, and its tint sits just under white, so scaling the
+            // base colour up would clip instead of reading as a flash.
+            road.color = Color.Lerp(roadBaseColor, Color.white, t * 0.9f);
         }
 
         public void Enqueue(Animal animal)

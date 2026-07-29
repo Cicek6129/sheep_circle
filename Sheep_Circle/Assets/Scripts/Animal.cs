@@ -23,6 +23,9 @@ namespace SheepCircle
         [SerializeField] SpriteRenderer body;
         [SerializeField] SpriteRenderer patch;
         [SerializeField] SpriteRenderer head;
+        [Tooltip("Blob under the animal. Held at a fixed world rotation so the " +
+                 "light never appears to swing around as the animal turns.")]
+        [SerializeField] SpriteRenderer shadow;
 
         [Header("Base speeds")]
         [SerializeField] float baseEnterSpeed = 3.4f;
@@ -230,6 +233,9 @@ namespace SheepCircle
                 float deg = Mathf.Atan2(facing.y, facing.x) * Mathf.Rad2Deg;
                 transform.rotation = Quaternion.Euler(0f, 0f, deg);
             }
+
+            // The shadow is a child, so it would otherwise inherit the spin.
+            if (shadow != null) shadow.transform.rotation = Quaternion.identity;
         }
     }
 }
