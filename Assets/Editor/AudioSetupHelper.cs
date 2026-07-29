@@ -11,10 +11,7 @@ namespace SheepCircle
         public static void InjectAudio()
         {
             // 0. HAFİZADAKİ BOZUK SAHNEYİ SİLİP DOĞRU OLANI ZORLA YÜKLE
-            var currentScene = EditorSceneManager.GetActiveScene();
-            // Kullanıcıya kaydet sorusu sormaması için dirty flag'ini temizle
-            EditorSceneManager.GetActiveScene().isDirty = false;
-            // Tahir'in hatasız sahnesini diskten yükle
+            // Tahir'in hatasız sahnesini diskten yükle (Eğer kaydet sorarsa DON'T SAVE diyecek)
             EditorSceneManager.OpenScene("Assets/Scenes/Game.unity", OpenSceneMode.Single);
 
             // 1. AudioListener'ı kameraya ekle
