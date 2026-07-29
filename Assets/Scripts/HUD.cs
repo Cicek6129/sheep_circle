@@ -99,7 +99,7 @@ namespace SheepCircle
         {
             gameOverPanel.SetActive(true);
             gameOverTitle.text = reason;
-            gameOverBody.text = $"{placed} hayvan yerlesti\n\nTekrar icin tikla";
+            gameOverBody.text = $"{placed} hayvan yerleşti\n\nTekrar için tıkla";
         }
 
         public void ToggleSound()

@@ -36,7 +36,7 @@ namespace SheepCircle
             if (hint != null)
             {
                 var hintTMP = hint.GetComponent<TextMeshProUGUI>();
-                if (hintTMP != null) hintTMP.text = "Tikla veya Space -> hayvani gonder";
+                if (hintTMP != null) hintTMP.text = "Tıkla veya Space -> hayvanı gönder";
             }
 
             // Create LevelText
@@ -100,7 +100,7 @@ namespace SheepCircle
             lcSubRect.anchoredPosition = new Vector2(0f, -30f);
             lcSubRect.sizeDelta = new Vector2(400f, 50f);
             var lcSubTMP = lcSubGO.AddComponent<TextMeshProUGUI>();
-            lcSubTMP.text = "Devam etmek icin tikla";
+            lcSubTMP.text = "Devam etmek için tıkla";
             lcSubTMP.fontSize = 24;
             lcSubTMP.alignment = TextAlignmentOptions.Center;
             lcSubTMP.color = Color.white;
