@@ -111,6 +111,12 @@ namespace SheepCircle
             }
         }
 
+        public bool IsPointerOverSoundButton(Vector2 screenPos)
+        {
+            if (soundButtonImage == null || !soundButtonImage.gameObject.activeInHierarchy) return false;
+            return RectTransformUtility.RectangleContainsScreenPoint(soundButtonImage.rectTransform, screenPos, null);
+        }
+
         public void UpdateSoundIcon()
         {
             if (soundButtonImage != null && AudioManager.Instance != null)

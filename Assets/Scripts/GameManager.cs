@@ -273,7 +273,14 @@ namespace SheepCircle
         {
             Pointer pointer = Pointer.current;
             if (pointer != null && pointer.press.wasPressedThisFrame)
+            {
+                if (hud != null && hud.IsPointerOverSoundButton(pointer.position.ReadValue()))
+                {
+                    hud.ToggleSound();
+                    return;
+                }
                 TryRelease();
+            }
 
             Keyboard keys = Keyboard.current;
             if (keys == null) return;
@@ -287,7 +294,15 @@ namespace SheepCircle
         bool AnyPressed()
         {
             Pointer pointer = Pointer.current;
-            if (pointer != null && pointer.press.wasPressedThisFrame) return true;
+            if (pointer != null && pointer.press.wasPressedThisFrame)
+            {
+                if (hud != null && hud.IsPointerOverSoundButton(pointer.position.ReadValue()))
+                {
+                    hud.ToggleSound();
+                    return false;
+                }
+                return true;
+            }
 
             Keyboard keys = Keyboard.current;
             return keys != null && (keys.rKey.wasPressedThisFrame || keys.spaceKey.wasPressedThisFrame);

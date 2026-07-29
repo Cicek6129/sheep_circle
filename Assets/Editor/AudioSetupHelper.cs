@@ -28,28 +28,33 @@ namespace SheepCircle
                 am.AddComponent<AudioManager>();
             }
 
-            // 3. Ses butonunu StartPanel yerine ana HUD'a ekle (oyun oynanırken de görünsün)
+            // 3. Ses butonunu ana HUD'a ekle (oyun oynanırken de görünsün)
             var mainHud = GameObject.Find("HUD");
-            if (mainHud != null && mainHud.transform.Find("SoundButton") == null)
+            if (mainHud != null)
             {
                 var soundOn = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/icon_sound_on.png");
                 var soundOff = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/icon_sound_off.png");
 
-                // Eğer eski SoundButton StartPanel altındaysa onu bulup silelim
-                var oldBtn = GameObject.Find("HUD/StartPanel/SoundButton");
-                if (oldBtn != null) Object.DestroyImmediate(oldBtn);
+                // Varsa eski butonları temizle (StartPanel'de veya ana HUD'da olanları)
+                var oldBtn1 = GameObject.Find("HUD/StartPanel/SoundButton");
+                if (oldBtn1 != null) Object.DestroyImmediate(oldBtn1);
+                var oldBtn2 = GameObject.Find("HUD/SoundButton");
+                if (oldBtn2 != null) Object.DestroyImmediate(oldBtn2);
 
+                // Sol üste yeni butonu ekle
                 var soundBtn = new GameObject("SoundButton", typeof(RectTransform));
                 soundBtn.transform.SetParent(mainHud.transform, false);
                 var soundImg = soundBtn.AddComponent<Image>();
                 if (soundOn != null) soundImg.sprite = soundOn;
                 
                 var rect = soundBtn.GetComponent<RectTransform>();
-                rect.anchorMin = new Vector2(1f, 1f);
-                rect.anchorMax = new Vector2(1f, 1f);
+                // Sol üst köşe
+                rect.anchorMin = new Vector2(0f, 1f);
+                rect.anchorMax = new Vector2(0f, 1f);
                 rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.anchoredPosition = new Vector2(-70f, -70f);
-                rect.sizeDelta = new Vector2(80f, 80f);
+                rect.anchoredPosition = new Vector2(70f, -70f);
+                rect.sizeDelta = new Vector2(90f, 90f);
+                soundBtn.transform.SetAsLastSibling(); // En üstte görünsün
 
                 // HUD referanslarını güncelle
                 var hud = Object.FindObjectOfType<HUD>();
