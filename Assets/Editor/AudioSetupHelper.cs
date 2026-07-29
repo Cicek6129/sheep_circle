@@ -10,6 +10,13 @@ namespace SheepCircle
         [MenuItem("Sheep Circle/Inject Audio System To Scene")]
         public static void InjectAudio()
         {
+            // 0. HAFİZADAKİ BOZUK SAHNEYİ SİLİP DOĞRU OLANI ZORLA YÜKLE
+            var currentScene = EditorSceneManager.GetActiveScene();
+            // Kullanıcıya kaydet sorusu sormaması için dirty flag'ini temizle
+            EditorSceneManager.GetActiveScene().isDirty = false;
+            // Tahir'in hatasız sahnesini diskten yükle
+            EditorSceneManager.OpenScene("Assets/Scenes/Game.unity", OpenSceneMode.Single);
+
             // 1. AudioListener'ı kameraya ekle
             var cam = Camera.main;
             if (cam != null && cam.GetComponent<AudioListener>() == null)
@@ -68,9 +75,14 @@ namespace SheepCircle
                 }
             }
 
+            // Tahir'in UI eklentisini de çalıştır (Level yazılarını geri getirmek için)
+            SceneSetupHelper.SetupLevelUI();
+
             // Sahneyi kaydet
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
-            Debug.Log("Audio System and Turkish Characters injected to Tahir's Scene successfully!");
+            EditorSceneManager.SaveOpenScenes();
+            
+            Debug.Log("Sahne basariyla tamir edildi! Oynamaya hazir!");
         }
     }
 }
