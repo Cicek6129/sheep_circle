@@ -28,15 +28,19 @@ namespace SheepCircle
                 am.AddComponent<AudioManager>();
             }
 
-            // 3. Ses butonunu StartPanel'e ekle
-            var startPanel = GameObject.Find("HUD/StartPanel");
-            if (startPanel != null && startPanel.transform.Find("SoundButton") == null)
+            // 3. Ses butonunu StartPanel yerine ana HUD'a ekle (oyun oynanırken de görünsün)
+            var mainHud = GameObject.Find("HUD");
+            if (mainHud != null && mainHud.transform.Find("SoundButton") == null)
             {
                 var soundOn = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/icon_sound_on.png");
                 var soundOff = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/icon_sound_off.png");
 
+                // Eğer eski SoundButton StartPanel altındaysa onu bulup silelim
+                var oldBtn = GameObject.Find("HUD/StartPanel/SoundButton");
+                if (oldBtn != null) Object.DestroyImmediate(oldBtn);
+
                 var soundBtn = new GameObject("SoundButton", typeof(RectTransform));
-                soundBtn.transform.SetParent(startPanel.transform, false);
+                soundBtn.transform.SetParent(mainHud.transform, false);
                 var soundImg = soundBtn.AddComponent<Image>();
                 if (soundOn != null) soundImg.sprite = soundOn;
                 
