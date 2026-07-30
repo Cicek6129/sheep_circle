@@ -68,7 +68,6 @@ namespace SheepCircle.EditorTools
             new Piece("flower_patch",  0.02f, -1.05f, 0.55f),
         };
 
-        [MenuItem("Sheep Circle/Setup Decor")]
         public static void Setup()
         {
             ImportArt();

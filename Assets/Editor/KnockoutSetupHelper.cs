@@ -25,7 +25,6 @@ namespace SheepCircle.EditorTools
         // Sits over the body (10) but under the crash burst (30).
         const int DizzyOrder = 20;
 
-        [MenuItem("Sheep Circle/Setup Knockout")]
         public static void Setup()
         {
             ImportArt("sheep_ko", "cow_ko", "goat_ko", "chicken_ko", "dizzy_stars", "debris_wool");

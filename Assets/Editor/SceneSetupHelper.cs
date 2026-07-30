@@ -14,7 +14,6 @@ namespace SheepCircle
             return go;
         }
 
-        [MenuItem("Sheep Circle/Setup Level UI")]
         public static void SetupLevelUI()
         {
             var playHud = GameObject.Find("HUD/PlayHud");

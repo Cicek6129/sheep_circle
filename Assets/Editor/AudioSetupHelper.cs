@@ -7,12 +7,10 @@ namespace SheepCircle
 {
     public static class AudioSetupHelper
     {
-        [MenuItem("Sheep Circle/Inject Audio System To Scene")]
         public static void InjectAudio()
         {
             // 0. HAFİZADAKİ BOZUK SAHNEYİ SİLİP DOĞRU OLANI ZORLA YÜKLE
-            // Tahir'in hatasız sahnesini diskten yükle (Eğer kaydet sorarsa DON'T SAVE diyecek)
-            EditorSceneManager.OpenScene("Assets/Scenes/Game.unity", OpenSceneMode.Single);
+            // NOT: Artık Rebuild Everything çağırıyor, bu yüzden diskten yüklemeye gerek yok.
 
             // 1. AudioListener'ı kameraya ekle
             var cam = Camera.main;
@@ -69,17 +67,7 @@ namespace SheepCircle
                 }
             }
 
-            // Ayrıca BASLA kelimesini BAŞLA yapalım (Tahir'in sahnesindeki buton için)
-            var startLabel = GameObject.Find("HUD/StartPanel/StartButton/Label");
-            if (startLabel != null)
-            {
-                var tmp = startLabel.GetComponent<TMPro.TextMeshProUGUI>();
-                if (tmp != null && tmp.text == "BASLA")
-                {
-                    tmp.text = "BAŞLA";
-                    EditorUtility.SetDirty(tmp);
-                }
-            }
+            // Türkçe karakter bozulduğu için BASLA kelimesini olduğu gibi bırakıyoruz.
 
             // Tahir'in UI eklentisini de çalıştır (Level yazılarını geri getirmek için)
             SceneSetupHelper.SetupLevelUI();

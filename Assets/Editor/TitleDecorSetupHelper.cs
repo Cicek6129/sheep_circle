@@ -28,7 +28,6 @@ namespace SheepCircle.EditorTools
         const string DecorName = "TitleDecor";
         const string RibbonName = "RecordRibbon";
 
-        [MenuItem("Sheep Circle/Setup Title Decor")]
         public static void Setup()
         {
             ImportUiArt();

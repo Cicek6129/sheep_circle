@@ -13,7 +13,7 @@ namespace SheepCircle.EditorTools
     /// Rebuilds the whole playfield from code. The board is pure geometry, so
     /// keeping it here means a tuning change is one menu click rather than an
     /// afternoon of dragging things around the Scene view.
-    /// Sheep Circle > Rebuild Game Scene.
+    /// Sheep Circle > Rebuild Everything.
     /// </summary>
     public static class GameSceneBuilder
     {
@@ -54,7 +54,7 @@ namespace SheepCircle.EditorTools
         static Sprite sheep, cow, goat, chicken, shepherd;
         static Sprite grassTile, roadTile, shadowBlob, crashBurst, dustPuff;
 
-        [MenuItem("Sheep Circle/Rebuild Game Scene")]
+        [MenuItem("Sheep Circle/Rebuild Everything (DANGER)")]
         public static void Build()
         {
             if (AssetDatabase.LoadAssetAtPath<UnityEngine.Object>("Assets/TextMesh Pro/Resources/TMP Settings.asset") == null)
@@ -119,11 +119,18 @@ namespace SheepCircle.EditorTools
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
 
+            // Call all the other setup helpers in the correct order
+            SceneSetupHelper.SetupLevelUI();
+            AudioSetupHelper.InjectAudio();
+            KnockoutSetupHelper.Setup();
+            DecorSetupHelper.Setup();
+            TitleDecorSetupHelper.Setup();
+
             var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(AssetDatabase.GetAssetPath(sceneAsset), true) };
 
             AssetDatabase.SaveAssets();
-            Debug.Log("Sheep Circle: scene rebuilt.");
+            Debug.Log("Sheep Circle: Everything rebuilt successfully.");
         }
 
         // ------------------------------------------------------------ prefab
@@ -246,10 +253,18 @@ namespace SheepCircle.EditorTools
             so.FindProperty("camera").objectReferenceValue = cam;
             so.FindProperty("maxQueuePerLane").intValue = MaxQueue;
 
-            var laneProp = so.FindProperty("lanes");
-            laneProp.arraySize = lanes.Length;
-            for (int i = 0; i < lanes.Length; i++)
-                laneProp.GetArrayElementAtIndex(i).objectReferenceValue = lanes[i];
+            var entryProp = so.FindProperty("entryLane");
+            if (entryProp != null)
+            {
+                foreach (var l in lanes)
+                {
+                    if (l.LaneIndex == RingGeometry.ENTRY_LANE)
+                    {
+                        entryProp.objectReferenceValue = l;
+                        break;
+                    }
+                }
+            }
 
             var kinds = so.FindProperty("kinds");
             kinds.arraySize = 5;
