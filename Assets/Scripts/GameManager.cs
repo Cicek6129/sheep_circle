@@ -17,6 +17,8 @@ namespace SheepCircle
         [SerializeField] Animal animalPrefab;
         [SerializeField] Burst burstPrefab;
         [SerializeField] Burst dustPrefab;
+        [Tooltip("Wool tufts and a feather, thrown out by a crash.")]
+        [SerializeField] Burst debrisPrefab;
         [SerializeField] EntryLane entryLane;
         [SerializeField] Transform animalParent;
         [SerializeField] HUD hud;
@@ -451,7 +453,14 @@ namespace SheepCircle
                     float reach = animals[i].CollisionRadius + animals[j].CollisionRadius;
                     if ((animals[i].Position - animals[j].Position).sqrMagnitude > reach * reach) continue;
 
-                    SpawnEffect(burstPrefab, (animals[i].Position + animals[j].Position) * 0.5f, reach * 1.9f);
+                    Vector2 impact = (animals[i].Position + animals[j].Position) * 0.5f;
+
+                    SpawnEffect(burstPrefab, impact, reach * 1.9f);
+                    SpawnEffect(debrisPrefab, impact, reach * 2.6f);
+
+                    // Both go down, each shoved away from the other.
+                    animals[i].KnockOut(animals[j].Position);
+                    animals[j].KnockOut(animals[i].Position);
 
                     if (AudioManager.Instance != null) AudioManager.Instance.PlayCrash();
 

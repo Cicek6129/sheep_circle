@@ -401,6 +401,75 @@ Avoid: text, logo, letters, border, frame, watermark, thin details.
 
 ---
 
+## 5c. Çarpışma sonrası: devrilmiş hayvanlar
+
+Çarpışan iki hayvan yok olmak yerine yan yatıp yerde kalsın, başlarında yıldız
+dönsün. Çarpışma oyunu bitirdiği için oyuncu bu kareye birkaç saniye bakıyor —
+bu yüzden pozun okunaklı olması önemli.
+
+> **Kritik ayrıntı:** tepeden bakan kamera, yan yatmış bir hayvanın **yan
+> profilini** görür. Yani KO sprite'ı hayvanın klasik yandan görünüşü olacak.
+> Bunu prompt'ta açıkça söylemek gerekiyor — "yan yatmış tepeden görünüm"
+> denirse üreteç arada kalmış bir şey çiziyor.
+>
+> Yıldızlar **yay değil halka** olmalı: kodda sprite kendi merkezinde
+> döndürülüyor, yay dönünce sallanıyor, halka dönünce başın etrafında
+> dolanıyormuş gibi duruyor.
+
+```
+A single asset sheet for a casual top-down farm game, laid out as a grid of
+separate cells on a plain background, each cell holding ONE asset with a
+generous margin and a caption underneath giving its filename.
+
+Cells 1-4 are the "knocked out" poses of animals that just crashed. The camera
+looks straight down at the ground, and the animal has COLLAPSED ONTO ITS SIDE -
+so what you see is the animal's SIDE PROFILE lying flat on the ground, its flank
+facing the camera. All four legs extend sideways in the same direction across
+the sprite, stiff and slightly bent. The head lies in profile with X-shaped
+closed eyes and a small tongue lolling out. Comic and harmless, dazed rather
+than hurt - no blood, no injury.
+
+Orientation for cells 1-4: the animal's head is at the RIGHT of the image, its
+back along the TOP edge and its legs pointing toward the BOTTOM edge.
+
+Style for all cells: flat 2D vector game art, thick dark brown outlines, simple
+cel shading with one soft highlight, bright cheerful farm palette, matching a
+casual mobile farm game.
+Every asset is centered on a FULLY TRANSPARENT background with NO shadow
+beneath it and no frame around it.
+
+The cells:
+
+1. "sheep_ko.png" - 512x512. Cream-white fluffy woolly body, dark grey head and
+   legs, X eyes, tongue out.
+2. "cow_ko.png" - 512x512. White body with black holstein patches, pink muzzle,
+   one small horn visible in profile, floppy ear, X eyes. Longer than the sheep.
+3. "goat_ko.png" - 512x512. Caramel-tan body, backswept horns, short beard,
+   X eyes. Slimmer and smaller than the sheep.
+4. "chicken_ko.png" - 512x512. Small round golden-yellow body, two thin orange
+   legs sticking out sideways, red comb, beak open, X eyes. Smallest of the four.
+5. "dizzy_stars.png" - 256x256. Three small golden cartoon stars with thick dark
+   outlines, evenly spaced around an invisible circle at roughly the 12, 4 and 8
+   o'clock positions, the ring filling most of the frame. Just the three stars,
+   no head, no character, no arc, no motion lines.
+6. "debris_wool.png" - 256x256. Four or five small separate tufts of cream-white
+   wool and one tiny feather, scattered apart from each other as if knocked
+   loose by an impact.
+
+Avoid: top-down view of the animals in cells 1-4, animals standing or upright,
+three-quarter view, blood, injury, distress, drop shadows, background colours
+inside the cells, text inside the artwork, and do NOT return a mockup or scene -
+individual assets only.
+```
+
+Çoban gerekmiyor: `Animal.CanCrash` onu dışarıda bırakıyor, çoban hiç çarpışmıyor.
+
+Kod tarafı (assetler gelince): `AnimalKind`'a `koSprite` alanı, `Animal`'a
+devrilme metodu (gövde sprite'ı değişir, döndürme son yönde donar), yıldız
+halkası için küçük bir döndürme bileşeni.
+
+---
+
 ## 6. Ses (opsiyonel — ElevenLabs SFX / benzeri)
 
 Kısa, loop'suz, mono, 44.1kHz:

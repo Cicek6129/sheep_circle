@@ -23,6 +23,11 @@ namespace SheepCircle
         [Tooltip("Off for sprites that already include a head.")]
         public bool showHead = true;
 
+        [Tooltip("Body sprite swapped in once this animal has been knocked over in " +
+                 "a crash: the same animal drawn collapsed on its side. Leaving it " +
+                 "empty just keeps the standing sprite.")]
+        public Sprite koSprite;
+
         [Header("Gameplay")]
         [Tooltip("World-space diameter of the animal.")]
         public float size = 0.62f;

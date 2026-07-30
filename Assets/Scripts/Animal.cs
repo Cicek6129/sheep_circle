@@ -37,6 +37,17 @@ namespace SheepCircle
         [Tooltip("Gap between animals trailing behind the shepherd, in world units.")]
         [SerializeField] float herdSpacing = 0.6f;
 
+        [Header("Knock-out")]
+        [Tooltip("Ring of stars over the head. Switched on only once knocked out.")]
+        [SerializeField] SpriteRenderer dizzy;
+        [Tooltip("Random tilt on collapsing, in degrees, so a crashed pair does not " +
+                 "end up lying perfectly parallel.")]
+        [SerializeField] float koTilt = 20f;
+        [Tooltip("Vertical squash of the body once it is on the ground.")]
+        [SerializeField] float koSquash = 0.86f;
+        [Tooltip("How far the impact shoves each animal apart, in world units.")]
+        [SerializeField] float koRecoil = 0.14f;
+
         public AnimalKind Kind { get; private set; }
         public AnimalState State { get; private set; } = AnimalState.Queued;
         public int LaneIndex { get; private set; }
@@ -46,7 +57,7 @@ namespace SheepCircle
 
         /// <summary>Animals on their way out are on the far side of the road and are
         /// past caring. The shepherd never crashes, and neither does his flock.</summary>
-        public bool CanCrash => !IsShepherd
+        public bool CanCrash => !IsShepherd && !knockedOut
                              && (State == AnimalState.Entering
                               || State == AnimalState.CirclingInside
                               || State == AnimalState.OnRing);
@@ -77,6 +88,9 @@ namespace SheepCircle
         /// <summary>True for exactly one frame after transitioning from Entering to
         /// CirclingInside, so the crash check still treats the animal as merging.</summary>
         bool justEnteredRing;
+
+        /// <summary>Once down, the animal stops being moved or turned by anything.</summary>
+        bool knockedOut;
 
         // ----------------------------------------------------------- setup
 
@@ -167,6 +181,42 @@ namespace SheepCircle
 
         /// <summary>Clear per-frame flags after crash checks have run.</summary>
         public void ClearFrameFlags() => justEnteredRing = false;
+
+        /// <summary>Collapse onto the ground after a crash: swap in the fallen
+        /// sprite, tip over, and start the stars circling.
+        ///
+        /// The animal is left frozen rather than given a new state, because a
+        /// crash ends the round and GameManager stops ticking anyone. Apply is
+        /// gated on the same flag so nothing can straighten it up afterwards.
+        /// </summary>
+        /// <param name="impactFrom">Where the blow came from; the animal is shoved
+        /// directly away from it.</param>
+        public void KnockOut(Vector2 impactFrom)
+        {
+            if (knockedOut) return;
+            knockedOut = true;
+
+            if (Kind != null && Kind.koSprite != null) body.sprite = Kind.koSprite;
+
+            Vector2 away = pos - impactFrom;
+            if (away.sqrMagnitude > 0.0001f) pos += away.normalized * koRecoil;
+            transform.position = new Vector3(pos.x, pos.y, 0f);
+
+            // Keep the direction it was travelling - it fell where it was going -
+            // then tip it a little off that line.
+            transform.rotation *= Quaternion.Euler(0f, 0f, Random.Range(-koTilt, koTilt));
+
+            // Only the body flattens; the stars and shadow keep their proportions.
+            body.transform.localScale = new Vector3(1f, koSquash, 1f);
+
+            if (shadow != null) shadow.transform.rotation = Quaternion.identity;
+
+            if (dizzy != null)
+            {
+                dizzy.gameObject.SetActive(true);
+                dizzy.transform.rotation = Quaternion.identity;
+            }
+        }
 
         // ----------------------------------------------------------- tick
 
@@ -289,6 +339,9 @@ namespace SheepCircle
 
         void Apply(Vector2 facing)
         {
+            // A collapsed animal stays exactly where and how it fell.
+            if (knockedOut) return;
+
             transform.position = new Vector3(pos.x, pos.y, 0f);
             if (facing.sqrMagnitude > 0.0001f)
             {
