@@ -82,13 +82,41 @@ namespace SheepCircle
             lcTitleRect.anchorMin = new Vector2(0.5f, 0.5f);
             lcTitleRect.anchorMax = new Vector2(0.5f, 0.5f);
             lcTitleRect.pivot = new Vector2(0.5f, 0.5f);
-            lcTitleRect.anchoredPosition = new Vector2(0f, 30f);
+            lcTitleRect.anchoredPosition = new Vector2(0f, 0f);
             lcTitleRect.sizeDelta = new Vector2(600f, 120f);
             var lcTitleTMP = lcTitleGO.AddComponent<TextMeshProUGUI>();
             lcTitleTMP.text = "LEVEL TAMAMLANDI!";
             lcTitleTMP.fontSize = 48;
             lcTitleTMP.alignment = TextAlignmentOptions.Center;
             lcTitleTMP.color = new Color(0.2f, 1f, 0.3f, 1f);
+
+            // LevelComplete stars
+            var starContGO = CreateUIObject("Stars", lcGO.transform);
+            var starContRect = starContGO.GetComponent<RectTransform>();
+            starContRect.anchorMin = new Vector2(0.5f, 0.5f);
+            starContRect.anchorMax = new Vector2(0.5f, 0.5f);
+            starContRect.pivot = new Vector2(0.5f, 0.5f);
+            starContRect.anchoredPosition = new Vector2(0f, 100f);
+            starContRect.sizeDelta = new Vector2(300f, 100f);
+            
+            var hlg = starContGO.AddComponent<HorizontalLayoutGroup>();
+            hlg.childAlignment = TextAnchor.MiddleCenter;
+            hlg.spacing = 20f;
+            hlg.childControlWidth = false;
+            hlg.childControlHeight = false;
+
+            var starSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/score_star.png");
+            
+            Image[] starImages = new Image[3];
+            for (int i=0; i<3; i++) {
+                var starGO = CreateUIObject("Star" + i, starContGO.transform);
+                var starRect = starGO.GetComponent<RectTransform>();
+                starRect.sizeDelta = new Vector2(80f, 80f);
+                var img = starGO.AddComponent<Image>();
+                img.sprite = starSprite;
+                img.color = new Color(0.3f, 0.3f, 0.3f, 1f);
+                starImages[i] = img;
+            }
 
             // LevelComplete subtitle
             var lcSubGO = CreateUIObject("LevelCompleteSubtitle", lcGO.transform);
@@ -111,6 +139,7 @@ namespace SheepCircle
             typeof(HUD).GetField("progressText", flags).SetValue(hud, progTMP);
             typeof(HUD).GetField("levelCompletePanel", flags).SetValue(hud, lcGO);
             typeof(HUD).GetField("levelCompleteTitle", flags).SetValue(hud, lcTitleTMP);
+            typeof(HUD).GetField("stars", flags).SetValue(hud, starImages);
             EditorUtility.SetDirty(hud);
 
             // Rename Lane2 to EntryLane, Lane0 to ExitLane for clarity

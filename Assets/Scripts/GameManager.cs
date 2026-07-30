@@ -267,8 +267,14 @@ namespace SheepCircle
                 PlayerPrefs.Save();
             }
 
+            int earnedStars = 1;
+            if (perfectsThisLevel >= totalRegularToSend && totalRegularToSend > 0)
+                earnedStars = 3;
+            else if (perfectsThisLevel > 0)
+                earnedStars = 2;
+
             hud.SetBest(best);
-            hud.ShowLevelComplete(currentLevel + 1);
+            hud.ShowLevelComplete(currentLevel + 1, earnedStars);
         }
 
         // ----------------------------------------------------------- input

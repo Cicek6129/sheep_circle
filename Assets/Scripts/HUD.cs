@@ -34,6 +34,8 @@ namespace SheepCircle
         [SerializeField] GameObject levelCompletePanel;
         [Tooltip("Title on the level-complete panel (e.g. 'LEVEL 3 TAMAMLANDI!'). Optional.")]
         [SerializeField] TMP_Text levelCompleteTitle;
+        [Tooltip("Stars shown on the level-complete panel.")]
+        [SerializeField] UnityEngine.UI.Image[] stars;
 
         void Update()
         {
@@ -80,10 +82,22 @@ namespace SheepCircle
             if (progressText != null) progressText.text = $"{placed} / {total}";
         }
 
-        public void ShowLevelComplete(int level)
+        public void ShowLevelComplete(int level, int earnedStars)
         {
             if (levelCompletePanel != null) levelCompletePanel.SetActive(true);
             if (levelCompleteTitle != null) levelCompleteTitle.text = $"LEVEL {level} TAMAMLANDI!";
+            
+            if (stars != null)
+            {
+                for (int i = 0; i < stars.Length; i++)
+                {
+                    if (stars[i] != null)
+                    {
+                        // Gold if earned, dark grey if empty
+                        stars[i].color = (i < earnedStars) ? Color.white : new Color(0.3f, 0.3f, 0.3f, 0.8f);
+                    }
+                }
+            }
         }
 
         public void HideLevelComplete()
