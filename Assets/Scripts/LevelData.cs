@@ -20,5 +20,11 @@ namespace SheepCircle
 
         [Tooltip("Allow the shepherd (clears animals from the ring) in the queue.")]
         public bool allowShepherd;
+
+        [Tooltip("If not empty, exactly these animals will be spawned on the ring. Leave empty for random generation.")]
+        public string[] explicitInitialAnimals;
+
+        [Tooltip("If not empty, exactly these animals will be queued. Leave empty for random generation.")]
+        public string[] explicitQueueAnimals;
     }
 }

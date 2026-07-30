@@ -138,5 +138,63 @@ namespace SheepCircle
                 soundButtonImage.sprite = AudioManager.Instance.IsMuted ? soundOffSprite : soundOnSprite;
             }
         }
+
+        // ----------------------------------------------------------- level select
+
+        [Header("Level Select")]
+        [SerializeField] UnityEngine.UI.Image menuButtonImage;
+        [SerializeField] GameObject levelSelectPanel;
+        [SerializeField] UnityEngine.UI.Image[] levelButtonImages;
+        [SerializeField] TMP_Text[] levelButtonTexts;
+        [SerializeField] Color unlockedColor = Color.white;
+        [SerializeField] Color lockedColor = new Color(0.3f, 0.3f, 0.3f, 0.8f);
+
+        public bool IsLevelSelectActive => levelSelectPanel != null && levelSelectPanel.activeInHierarchy;
+
+        public void ShowLevelSelect(int bestLevel)
+        {
+            if (levelSelectPanel == null) return;
+            levelSelectPanel.SetActive(true);
+            if (playHud != null) playHud.SetActive(false);
+            
+            if (levelButtonImages != null && levelButtonTexts != null)
+            {
+                for (int i = 0; i < levelButtonImages.Length; i++)
+                {
+                    bool unlocked = i <= bestLevel;
+                    if (levelButtonImages[i] != null)
+                        levelButtonImages[i].color = unlocked ? unlockedColor : lockedColor;
+                    if (levelButtonTexts[i] != null)
+                        levelButtonTexts[i].color = unlocked ? Color.white : new Color(1f, 1f, 1f, 0.5f);
+                }
+            }
+        }
+
+        public void HideLevelSelect()
+        {
+            if (levelSelectPanel == null) return;
+            levelSelectPanel.SetActive(false);
+            if (playHud != null && !startPanel.activeInHierarchy) playHud.SetActive(true);
+        }
+
+        public bool IsPointerOverMenuButton(Vector2 screenPos)
+        {
+            if (menuButtonImage == null || !menuButtonImage.gameObject.activeInHierarchy) return false;
+            return RectTransformUtility.RectangleContainsScreenPoint(menuButtonImage.rectTransform, screenPos, null);
+        }
+
+        public int GetClickedLevelIndex(Vector2 screenPos)
+        {
+            if (levelButtonImages == null || !IsLevelSelectActive) return -1;
+            
+            for (int i = 0; i < levelButtonImages.Length; i++)
+            {
+                if (levelButtonImages[i] != null && RectTransformUtility.RectangleContainsScreenPoint(levelButtonImages[i].rectTransform, screenPos, null))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
     }
 }

@@ -31,11 +31,31 @@ namespace SheepCircle
         [Tooltip("Hand-authored levels. Beyond these the game generates levels procedurally.")]
         [SerializeField] LevelData[] levels = new LevelData[]
         {
-            new LevelData { initialAnimalCount = 4, animalsToSend = 4, ringSpeed = 35f },
-            new LevelData { initialAnimalCount = 5, animalsToSend = 5, ringSpeed = 40f },
-            new LevelData { initialAnimalCount = 6, animalsToSend = 6, ringSpeed = 45f },
-            new LevelData { initialAnimalCount = 7, animalsToSend = 6, ringSpeed = 50f },
-            new LevelData { initialAnimalCount = 8, animalsToSend = 7, ringSpeed = 55f, allowShepherd = true },
+            new LevelData { 
+                ringSpeed = 35f, 
+                explicitInitialAnimals = new string[] { "Tavuk", "Koyun", "Koyun", "Inek" },
+                explicitQueueAnimals = new string[] { "Koyun", "Inek", "Koyun", "Tavuk", "Keci", "Koyun", "Tavuk", "Coban" } 
+            },
+            new LevelData { 
+                ringSpeed = 40f, 
+                explicitInitialAnimals = new string[] { "Keci", "Koyun", "Inek", "Tavuk", "Keci" },
+                explicitQueueAnimals = new string[] { "Inek", "Koyun", "Keci", "Coban", "Tavuk", "Inek", "Koyun", "Keci", "Tavuk" } 
+            },
+            new LevelData { 
+                ringSpeed = 45f, 
+                explicitInitialAnimals = new string[] { "Inek", "Tavuk", "Koyun", "Koyun", "Keci", "Inek" },
+                explicitQueueAnimals = new string[] { "Koyun", "Keci", "Tavuk", "Koyun", "Coban", "Inek", "Tavuk", "Keci", "Koyun", "Inek" } 
+            },
+            new LevelData { 
+                ringSpeed = 50f, 
+                explicitInitialAnimals = new string[] { "Tavuk", "Keci", "Inek", "Koyun", "Tavuk", "Keci", "Koyun" },
+                explicitQueueAnimals = new string[] { "Inek", "Koyun", "Coban", "Keci", "Tavuk", "Inek", "Koyun", "Keci", "Tavuk", "Koyun", "Inek" } 
+            },
+            new LevelData { 
+                ringSpeed = 55f, 
+                explicitInitialAnimals = new string[] { "Koyun", "Inek", "Keci", "Tavuk", "Koyun", "Inek", "Keci", "Tavuk" },
+                explicitQueueAnimals = new string[] { "Tavuk", "Keci", "Inek", "Koyun", "Coban", "Tavuk", "Keci", "Inek", "Koyun", "Tavuk", "Keci", "Inek" } 
+            },
             new LevelData { initialAnimalCount = 9, animalsToSend = 8, ringSpeed = 60f, allowShepherd = true },
             new LevelData { initialAnimalCount = 10, animalsToSend = 8, ringSpeed = 65f, allowShepherd = true },
         };
@@ -46,7 +66,7 @@ namespace SheepCircle
         [SerializeField] float restartDelay = 0.6f;
         [SerializeField] float levelCompleteDelay = 1.5f;
         [Tooltip("Minimum level index (0-based) before a shepherd can appear.")]
-        [SerializeField] int shepherdMinLevel = 4;
+        [SerializeField] int shepherdMinLevel = 0;
 
         const string BestLevelKey = "SheepCircle.BestLevel";
 
@@ -70,6 +90,7 @@ namespace SheepCircle
         bool gameOver;
         bool levelComplete;
         bool waitingToStart;
+        int explicitQueueSpawnIndex;
 
         public RingGeometry Geometry => geometry;
 
@@ -121,17 +142,67 @@ namespace SheepCircle
         {
             float dt = Time.deltaTime;
 
+            Pointer pointer = Pointer.current;
+            if (pointer != null && pointer.press.wasPressedThisFrame && hud != null)
+            {
+                Vector2 pos = pointer.position.ReadValue();
+                if (hud.IsPointerOverSoundButton(pos))
+                {
+                    hud.ToggleSound();
+                    return;
+                }
+
+                if (hud.IsPointerOverMenuButton(pos))
+                {
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlayTap();
+                    if (hud.IsLevelSelectActive)
+                    {
+                        hud.HideLevelSelect();
+                        // If we were waiting to start, and we close the menu without picking a level, 
+                        // maybe go back to the start panel? 
+                        // For simplicity, just hide it.
+                    }
+                    else
+                    {
+                        hud.ShowLevelSelect(PlayerPrefs.GetInt(BestLevelKey, 0));
+                    }
+                    return;
+                }
+
+                if (hud.IsLevelSelectActive)
+                {
+                    int clickedLevel = hud.GetClickedLevelIndex(pos);
+                    if (clickedLevel >= 0)
+                    {
+                        int bestLevel = PlayerPrefs.GetInt(BestLevelKey, 0);
+                        if (clickedLevel <= bestLevel)
+                        {
+                            if (AudioManager.Instance != null) AudioManager.Instance.PlayTap();
+                            waitingToStart = false;
+                            titleShown = true;
+                            hud.HideStart();
+                            hud.HideLevelSelect();
+                            LoadLevel(clickedLevel);
+                        }
+                    }
+                    return; // Eat the tap if level select is open
+                }
+            }
+
+            // Pause game time if level select is active? 
+            // Or just let animals tick in the background. The original game has no pause. Let them tick.
+            
             if (waitingToStart)
             {
                 TickAnimals(dt);
 
-                if (AnyPressed())
+                if (AnyPressed(pointer))
                 {
                     if (AudioManager.Instance != null) AudioManager.Instance.PlayTap();
                     waitingToStart = false;
                     titleShown = true;
                     hud.HideStart();
-                    LoadLevel(0);
+                    LoadLevel(PlayerPrefs.GetInt(BestLevelKey, 0)); // Start from best level instead of 0
                 }
                 return;
             }
@@ -140,7 +211,7 @@ namespace SheepCircle
             {
                 TickAnimals(dt);
                 levelCompleteTimer -= dt;
-                if (levelCompleteTimer <= 0f && AnyPressed())
+                if (levelCompleteTimer <= 0f && AnyPressed(pointer))
                     LoadLevel(currentLevel + 1);
                 return;
             }
@@ -148,11 +219,14 @@ namespace SheepCircle
             if (gameOver)
             {
                 gameOverTimer -= dt;
-                if (gameOverTimer <= 0f && AnyPressed()) RestartLevel();
+                if (gameOverTimer <= 0f && AnyPressed(pointer)) RestartLevel();
                 return;
             }
 
-            HandleInput();
+            if (!hud.IsLevelSelectActive)
+            {
+                HandleInput(pointer);
+            }
             TickAnimals(dt);
             CheckHerding();
             CheckCrashes();
@@ -185,7 +259,21 @@ namespace SheepCircle
             if (entryLane != null) entryLane.Clear();
 
             LevelData data = GetLevelData(level);
-            totalRegularToSend = data.animalsToSend;
+            
+            explicitQueueSpawnIndex = 0;
+            if (data.explicitQueueAnimals != null && data.explicitQueueAnimals.Length > 0)
+            {
+                int c = 0;
+                for (int i = 0; i < data.explicitQueueAnimals.Length; i++)
+                {
+                    if (data.explicitQueueAnimals[i] != "Coban") c++;
+                }
+                totalRegularToSend = c;
+            }
+            else
+            {
+                totalRegularToSend = data.animalsToSend;
+            }
 
             hud.SetLevel(level + 1);
             hud.SetProgress(0, totalRegularToSend);
@@ -198,13 +286,27 @@ namespace SheepCircle
 
         void SpawnInitialAnimals(LevelData data)
         {
-            float angleStep = 360f / data.initialAnimalCount;
-            for (int i = 0; i < data.initialAnimalCount; i++)
+            if (data.explicitInitialAnimals != null && data.explicitInitialAnimals.Length > 0)
             {
-                AnimalKind kind = PickNonShepherdKind();
-                Animal animal = Instantiate(animalPrefab, animalParent);
-                animal.SetupAsCircling(kind, i * angleStep, geometry);
-                animals.Add(animal);
+                float angleStep = 360f / data.explicitInitialAnimals.Length;
+                for (int i = 0; i < data.explicitInitialAnimals.Length; i++)
+                {
+                    AnimalKind kind = FindKindByName(data.explicitInitialAnimals[i]);
+                    Animal animal = Instantiate(animalPrefab, animalParent);
+                    animal.SetupAsCircling(kind, i * angleStep, geometry);
+                    animals.Add(animal);
+                }
+            }
+            else
+            {
+                float angleStep = 360f / data.initialAnimalCount;
+                for (int i = 0; i < data.initialAnimalCount; i++)
+                {
+                    AnimalKind kind = PickNonShepherdKind();
+                    Animal animal = Instantiate(animalPrefab, animalParent);
+                    animal.SetupAsCircling(kind, i * angleStep, geometry);
+                    animals.Add(animal);
+                }
             }
         }
 
@@ -212,34 +314,55 @@ namespace SheepCircle
         {
             while (entryLane != null && entryLane.QueueCount < maxQueuePerLane)
             {
-                bool allRegularDone = regularAnimalsCreated >= totalRegularToSend;
-                bool shepherdDone = shepherdCreatedThisLevel || !data.allowShepherd;
-
-                if (allRegularDone && shepherdDone) break;
-
-                // Maybe inject the shepherd once some regulars have been created.
-                if (data.allowShepherd && !shepherdCreatedThisLevel
-                    && shepherdsAlive == 0 && regularAnimalsCreated >= 2
-                    && Random.value < 0.2f)
+                if (data.explicitQueueAnimals != null && data.explicitQueueAnimals.Length > 0)
                 {
-                    AnimalKind sk = PickShepherdKind();
-                    if (sk != null)
+                    if (explicitQueueSpawnIndex < data.explicitQueueAnimals.Length)
                     {
-                        SpawnQueueAnimal(sk);
-                        shepherdCreatedThisLevel = true;
-                        shepherdsAlive++;
-                        continue;
+                        AnimalKind kind = FindKindByName(data.explicitQueueAnimals[explicitQueueSpawnIndex]);
+                        if (kind != null)
+                        {
+                            SpawnQueueAnimal(kind);
+                            if (kind.isShepherd) shepherdsAlive++;
+                            else regularAnimalsCreated++;
+                        }
+                        explicitQueueSpawnIndex++;
                     }
-                }
-
-                if (!allRegularDone)
-                {
-                    SpawnQueueAnimal(PickNonShepherdKind());
-                    regularAnimalsCreated++;
+                    else
+                    {
+                        break;
+                    }
                 }
                 else
                 {
-                    break;
+                    bool allRegularDone = regularAnimalsCreated >= totalRegularToSend;
+                    bool shepherdDone = shepherdCreatedThisLevel || !data.allowShepherd;
+
+                    if (allRegularDone && shepherdDone) break;
+
+                    // Maybe inject the shepherd once some regulars have been created.
+                    if (data.allowShepherd && !shepherdCreatedThisLevel
+                        && shepherdsAlive == 0 && regularAnimalsCreated >= 2
+                        && Random.value < 0.2f)
+                    {
+                        AnimalKind sk = PickShepherdKind();
+                        if (sk != null)
+                        {
+                            SpawnQueueAnimal(sk);
+                            shepherdCreatedThisLevel = true;
+                            shepherdsAlive++;
+                            continue;
+                        }
+                    }
+
+                    if (!allRegularDone)
+                    {
+                        SpawnQueueAnimal(PickNonShepherdKind());
+                        regularAnimalsCreated++;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
             }
         }
@@ -279,16 +402,10 @@ namespace SheepCircle
 
         // ----------------------------------------------------------- input
 
-        void HandleInput()
+        void HandleInput(Pointer pointer)
         {
-            Pointer pointer = Pointer.current;
             if (pointer != null && pointer.press.wasPressedThisFrame)
             {
-                if (hud != null && hud.IsPointerOverSoundButton(pointer.position.ReadValue()))
-                {
-                    hud.ToggleSound();
-                    return;
-                }
                 TryRelease();
             }
 
@@ -301,16 +418,10 @@ namespace SheepCircle
         /// <summary>Dismisses the title card and, later, the game-over card. The
         /// press is swallowed here because Update returns straight after, so the
         /// same tap can never also release an animal.</summary>
-        bool AnyPressed()
+        bool AnyPressed(Pointer pointer)
         {
-            Pointer pointer = Pointer.current;
             if (pointer != null && pointer.press.wasPressedThisFrame)
             {
-                if (hud != null && hud.IsPointerOverSoundButton(pointer.position.ReadValue()))
-                {
-                    hud.ToggleSound();
-                    return false;
-                }
                 return true;
             }
 
@@ -371,6 +482,16 @@ namespace SheepCircle
             return null;
         }
 
+        AnimalKind FindKindByName(string name)
+        {
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                if (kinds[i].displayName.Equals(name, System.StringComparison.OrdinalIgnoreCase))
+                    return kinds[i];
+            }
+            return kinds[0];
+        }
+
         // ----------------------------------------------------------- simulation
 
         void TickAnimals(float dt)
@@ -426,13 +547,30 @@ namespace SheepCircle
                     animalsPlaced++;
                     hud.SetProgress(animalsPlaced, totalRegularToSend);
                     hud.SetScore(animalsPlaced);
-
-                    if (animalsPlaced >= totalRegularToSend)
-                        LevelCompleted();
                 }
             }
 
             for (int i = 0; i < finished.Count; i++) Finish(finished[i]);
+
+            if (!levelComplete && animalsPlaced >= totalRegularToSend)
+            {
+                if (entryLane == null || entryLane.QueueCount == 0)
+                {
+                    bool anyEntering = false;
+                    for (int j = 0; j < animals.Count; j++)
+                    {
+                        if (animals[j].State == AnimalState.Entering || animals[j].State == AnimalState.Queued)
+                        {
+                            anyEntering = true;
+                            break;
+                        }
+                    }
+                    if (!anyEntering)
+                    {
+                        LevelCompleted();
+                    }
+                }
+            }
         }
 
         void Finish(Animal animal)
@@ -442,14 +580,22 @@ namespace SheepCircle
                 IReadOnlyList<Animal> herd = animal.Herd;
                 for (int i = 0; i < herd.Count; i++)
                 {
-                    animals.Remove(herd[i]);
-                    Destroy(herd[i].gameObject);
+                    if (herd[i] != null && animals.Contains(herd[i]))
+                    {
+                        animals.Remove(herd[i]);
+                        if (herd[i].gameObject != null)
+                            Destroy(herd[i].gameObject);
+                    }
                 }
                 shepherdsAlive--;
             }
 
-            animals.Remove(animal);
-            Destroy(animal.gameObject);
+            if (animals.Contains(animal))
+            {
+                animals.Remove(animal);
+                if (animal.gameObject != null)
+                    Destroy(animal.gameObject);
+            }
         }
 
         void CheckHerding()
@@ -462,14 +608,31 @@ namespace SheepCircle
                 if (!shepherd.IsShepherd) continue;
                 if (shepherd.State != AnimalState.OnRing && shepherd.State != AnimalState.Exiting) continue;
 
+                if (shepherd.Herd.Count >= 1) continue; // Already collected one
+
+                Animal closestAhead = null;
+                float minDelta = 180f; // Only look at the 180 degrees in front
+
                 for (int j = 0; j < animals.Count; j++)
                 {
                     Animal other = animals[j];
                     if (!other.CanBeHerded) continue;
+                    if (other.State == AnimalState.Entering) continue;
 
-                    float reach = shepherd.CollisionRadius + other.CollisionRadius + 0.06f;
-                    if ((shepherd.Position - other.Position).sqrMagnitude <= reach * reach)
-                        shepherd.Collect(other);
+                    float delta = Mathf.DeltaAngle(shepherd.RingAngle, other.RingAngle);
+                    if (delta < 0f) delta += 360f;
+
+                    // Ensure it's actually ahead and reasonably close (e.g., within 180 degrees)
+                    if (delta > 0f && delta < minDelta)
+                    {
+                        minDelta = delta;
+                        closestAhead = other;
+                    }
+                }
+
+                if (closestAhead != null)
+                {
+                    shepherd.Collect(closestAhead, geometry);
                 }
             }
         }

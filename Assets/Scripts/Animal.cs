@@ -75,8 +75,7 @@ namespace SheepCircle
         /// <summary>Out on the road and not already following the shepherd.</summary>
         public bool CanBeHerded => !IsShepherd
                                 && (State == AnimalState.Entering
-                                 || State == AnimalState.CirclingInside
-                                 || State == AnimalState.OnRing);
+                                 || State == AnimalState.CirclingInside);
 
         public float CollisionRadius => Kind != null ? Kind.collisionRadius : 0.28f;
         public Vector2 Position => pos;
@@ -86,6 +85,7 @@ namespace SheepCircle
 
         int exitLane;
         float ringAngle;
+        public float RingAngle => ringAngle;
         float arcRemaining;
         float exitTravel;
         Vector2 pos;
@@ -170,11 +170,23 @@ namespace SheepCircle
         }
 
         /// <summary>Shepherd sweeps someone up.</summary>
-        public void Collect(Animal other)
+        public void Collect(Animal other, RingGeometry geo)
         {
             if (!IsShepherd || !other.CanBeHerded) return;
-            other.State = AnimalState.Herded;
+            if (herd.Count >= 1) return;
             herd.Add(other);
+            other.CommandToExit(exitLane, geo);
+        }
+
+        public void CommandToExit(int targetExitLane, RingGeometry geo)
+        {
+            if (State != AnimalState.CirclingInside && State != AnimalState.Entering) return;
+            exitLane = targetExitLane;
+            float exitAng = geo.ExitAngle(exitLane);
+            arcRemaining = exitAng - ringAngle;
+            while (arcRemaining < 0f) arcRemaining += 360f;
+            while (arcRemaining >= 360f) arcRemaining -= 360f;
+            State = AnimalState.OnRing;
         }
 
         /// <summary>Called by the shepherd for each animal trailing behind him.</summary>
@@ -323,33 +335,7 @@ namespace SheepCircle
 
         void PositionHerd(RingGeometry geo)
         {
-            if (herd.Count == 0) return;
-
-            float spacingDeg = herdSpacing / geo.radius * Mathf.Rad2Deg;
-
-            for (int i = 0; i < herd.Count; i++)
-            {
-                float back = herdSpacing * (i + 1);
-
-                if (State == AnimalState.OnRing)
-                {
-                    float angle = ringAngle - spacingDeg * (i + 1);
-                    herd[i].SetHerdPose(geo.PointOnRing(angle), RingGeometry.Dir(angle + 90f));
-                    continue;
-                }
-
-                // Exiting: the tail of the flock is still coming round the ring.
-                float along = exitTravel - back;
-                if (along >= 0f)
-                {
-                    herd[i].SetHerdPose(geo.ExitPos(exitLane, along), geo.LaneDir(exitLane));
-                }
-                else
-                {
-                    float angle = geo.ExitAngle(exitLane) + along / geo.radius * Mathf.Rad2Deg;
-                    herd[i].SetHerdPose(geo.PointOnRing(angle), RingGeometry.Dir(angle + 90f));
-                }
-            }
+            // Do nothing. The herded animals now exit independently using OnRing state.
         }
 
         void Apply(Vector2 facing)

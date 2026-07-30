@@ -277,7 +277,7 @@ namespace SheepCircle.EditorTools
             SetKind(kinds, 1, "Inek",  cow,      Color.white, false, 1.22f, 0.55f, 0.62f, 2.0f, false, 1.00f, 0);
             SetKind(kinds, 2, "Keci",  goat,     Color.white, false, 0.74f, 0.33f, 1.30f, 3.0f, false, 1.00f, 0);
             SetKind(kinds, 3, "Tavuk", chicken,  Color.white, false, 0.58f, 0.26f, 1.75f, 2.0f, false, 1.00f, 0);
-            SetKind(kinds, 4, "Coban", shepherd, Color.white, false, 1.08f, 0.48f, 1.10f, 0.9f, true,  1.55f, 1);
+            SetKind(kinds, 4, "Coban", shepherd, Color.white, false, 1.08f, 0.48f, 1.10f, 0.9f, true,  1.00f, 0);
 
             so.ApplyModifiedPropertiesWithoutUndo();
         }
@@ -374,6 +374,11 @@ namespace SheepCircle.EditorTools
                                                out UnityEngine.UI.Image soundImg,
                                                out Sprite soundOn, out Sprite soundOff);
 
+            GameObject levelSelect = BuildLevelSelectPanel(canvasGo.transform,
+                                                           out UnityEngine.UI.Image menuBtn,
+                                                           out UnityEngine.UI.Image[] lvlImgs,
+                                                           out TextMeshProUGUI[] lvlTxts);
+
             var hud = canvasGo.AddComponent<HUD>();
             var so = new SerializedObject(hud);
             so.FindProperty("scoreText").objectReferenceValue = score;
@@ -388,7 +393,23 @@ namespace SheepCircle.EditorTools
             so.FindProperty("soundButtonImage").objectReferenceValue = soundImg;
             so.FindProperty("soundOnSprite").objectReferenceValue = soundOn;
             so.FindProperty("soundOffSprite").objectReferenceValue = soundOff;
+
+            so.FindProperty("levelSelectPanel").objectReferenceValue = levelSelect;
+            so.FindProperty("menuButtonImage").objectReferenceValue = menuBtn;
+            
+            var imgsProp = so.FindProperty("levelButtonImages");
+            imgsProp.arraySize = lvlImgs.Length;
+            for (int i = 0; i < lvlImgs.Length; i++)
+                imgsProp.GetArrayElementAtIndex(i).objectReferenceValue = lvlImgs[i];
+
+            var txtsProp = so.FindProperty("levelButtonTexts");
+            txtsProp.arraySize = lvlTxts.Length;
+            for (int i = 0; i < lvlTxts.Length; i++)
+                txtsProp.GetArrayElementAtIndex(i).objectReferenceValue = lvlTxts[i];
+
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            levelSelect.SetActive(false);
 
             panel.SetActive(false);
             return hud;
@@ -486,6 +507,72 @@ namespace SheepCircle.EditorTools
             Anchor(soundImg.rectTransform, new Vector2(1f, 1f), new Vector2(-70f, -70f), new Vector2(80f, 80f));
 
             return start;
+        }
+
+        static GameObject BuildLevelSelectPanel(Transform canvas, out UnityEngine.UI.Image menuBtn,
+                                                out UnityEngine.UI.Image[] lvlImgs,
+                                                out TextMeshProUGUI[] lvlTxts)
+        {
+            var menuGo = new GameObject("MenuButton", typeof(RectTransform));
+            menuGo.transform.SetParent(canvas, false);
+            menuBtn = menuGo.AddComponent<Image>();
+            menuBtn.sprite = LoadSprite("button_green");
+            Anchor(menuBtn.rectTransform, new Vector2(0f, 1f), new Vector2(80f, -80f), new Vector2(100f, 100f));
+            
+            var menuText = NewText("MenuText", menuGo.transform, "MENU", 28f, Color.white);
+            menuText.fontStyle = FontStyles.Bold;
+            Anchor(menuText.rectTransform, Middle, new Vector2(0f, 0f), new Vector2(100f, 100f));
+
+            var panelGo = new GameObject("LevelSelectPanel", typeof(RectTransform));
+            panelGo.transform.SetParent(canvas, false);
+            var rect = panelGo.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            panelGo.AddComponent<Image>().color = new Color(0.05f, 0.09f, 0.06f, 0.88f);
+
+            Sprite wood = LoadSprite("panel_wood");
+            Sprite green = LoadSprite("button_green");
+            
+            const float CardWidth = 1000f;
+            float cardH = CardWidth / Aspect(wood, 1.39f);
+            
+            var card = NewImage("Card", panelGo.transform, wood, new Color(1f, 1f, 1f, 0.97f));
+            Anchor(card.rectTransform, Middle, Vector2.zero, new Vector2(CardWidth, cardH));
+
+            var title = NewText("Title", card.transform, "ANA MENÜ", 70f, new Color(1f, 0.97f, 0.90f));
+            title.fontStyle = FontStyles.Bold;
+            Anchor(title.rectTransform, Middle, new Vector2(0f, cardH * 0.4f), new Vector2(CardWidth, 100f));
+
+            int cols = 5;
+            int rows = 3;
+            lvlImgs = new UnityEngine.UI.Image[cols * rows];
+            lvlTxts = new TextMeshProUGUI[cols * rows];
+
+            float startX = -CardWidth * 0.35f;
+            float startY = cardH * 0.15f;
+            float spacingX = CardWidth * 0.7f / (cols - 1);
+            float spacingY = -cardH * 0.45f / (rows - 1);
+            float btnW = spacingX * 0.8f;
+            float btnH = Mathf.Abs(spacingY) * 0.7f;
+
+            for (int i = 0; i < cols * rows; i++)
+            {
+                int r = i / cols;
+                int c = i % cols;
+
+                var btn = NewImage($"LevelBtn_{i}", card.transform, green, Color.white);
+                Anchor(btn.rectTransform, Middle, new Vector2(startX + c * spacingX, startY + r * spacingY), new Vector2(btnW, btnH));
+                lvlImgs[i] = btn;
+
+                var txt = NewText($"LevelTxt_{i}", btn.transform, (i + 1).ToString(), btnH * 0.5f, Color.white);
+                txt.fontStyle = FontStyles.Bold;
+                Anchor(txt.rectTransform, Middle, new Vector2(0f, 2f), new Vector2(btnW, btnH));
+                lvlTxts[i] = txt;
+            }
+
+            return panelGo;
         }
 
         // ----------------------------------------------------------- helpers
