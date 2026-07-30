@@ -43,8 +43,13 @@ namespace SheepCircle
         [Tooltip("Random tilt on collapsing, in degrees, so a crashed pair does not " +
                  "end up lying perfectly parallel.")]
         [SerializeField] float koTilt = 20f;
-        [Tooltip("Vertical squash of the body once it is on the ground.")]
-        [SerializeField] float koSquash = 0.86f;
+        [Tooltip("Grow-up applied to the body when it collapses. A fallen animal " +
+                 "is drawn from the side, so it covers about half the pixels its " +
+                 "top-down pose did at the same length, and reads as having shrunk. " +
+                 "Matching the area exactly would want 1.18 for the sheep, 1.40 for " +
+                 "the cow and 1.44 for the goat; one value in between keeps them " +
+                 "consistent with each other.")]
+        [SerializeField] float koScale = 1.25f;
         [Tooltip("How far the impact shoves each animal apart, in world units.")]
         [SerializeField] float koRecoil = 0.14f;
 
@@ -198,6 +203,13 @@ namespace SheepCircle
 
             if (Kind != null && Kind.koSprite != null) body.sprite = Kind.koSprite;
 
+            // Every kind currently ships with showHead off and no patch, so these
+            // are already inactive. They are switched off anyway: both are drawn
+            // for an animal standing upright, and a kind that turned either back
+            // on would leave them floating over the fallen body.
+            if (head != null) head.gameObject.SetActive(false);
+            if (patch != null) patch.gameObject.SetActive(false);
+
             Vector2 away = pos - impactFrom;
             if (away.sqrMagnitude > 0.0001f) pos += away.normalized * koRecoil;
             transform.position = new Vector3(pos.x, pos.y, 0f);
@@ -206,8 +218,11 @@ namespace SheepCircle
             // then tip it a little off that line.
             transform.rotation *= Quaternion.Euler(0f, 0f, Random.Range(-koTilt, koTilt));
 
-            // Only the body flattens; the stars and shadow keep their proportions.
-            body.transform.localScale = new Vector3(1f, koSquash, 1f);
+            // Grown, not squashed. koSprite already draws the animal spread flat,
+            // so squashing it again only made it look run over; the real problem
+            // is that the side-on pose covers far fewer pixels than the top-down
+            // one it replaces.
+            body.transform.localScale = Vector3.one * koScale;
 
             if (shadow != null) shadow.transform.rotation = Quaternion.identity;
 
