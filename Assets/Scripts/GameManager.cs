@@ -65,6 +65,7 @@ namespace SheepCircle
         int regularAnimalsCreated;
         int totalRegularToSend;
         int shepherdsAlive;
+        int perfectsThisLevel;
         bool shepherdCreatedThisLevel;
         bool gameOver;
         bool levelComplete;
@@ -166,6 +167,7 @@ namespace SheepCircle
         {
             currentLevel = level;
             animalsPlaced = 0;
+            perfectsThisLevel = 0;
             regularAnimalsCreated = 0;
             shepherdsAlive = 0;
             shepherdCreatedThisLevel = false;
@@ -384,6 +386,36 @@ namespace SheepCircle
                     && animals[i].State == AnimalState.CirclingInside
                     && !animals[i].IsShepherd)
                 {
+                    // Check for PERFECT pass
+                    float minDistanceSq = float.MaxValue;
+                    float requiredReachForCrash = 0f;
+
+                    for (int j = 0; j < animals.Count; j++)
+                    {
+                        if (i == j) continue;
+                        if (animals[j].State == AnimalState.CirclingInside || animals[j].State == AnimalState.OnRing)
+                        {
+                            float distSq = (animals[i].Position - animals[j].Position).sqrMagnitude;
+                            if (distSq < minDistanceSq)
+                            {
+                                minDistanceSq = distSq;
+                                requiredReachForCrash = animals[i].CollisionRadius + animals[j].CollisionRadius;
+                            }
+                        }
+                    }
+
+                    // A perfect pass is when the distance is very close to the crash radius.
+                    float perfectMargin = 0.25f; 
+                    if (minDistanceSq < float.MaxValue)
+                    {
+                        float dist = Mathf.Sqrt(minDistanceSq);
+                        if (dist > requiredReachForCrash && dist <= requiredReachForCrash + perfectMargin)
+                        {
+                            perfectsThisLevel++;
+                            SpawnPerfectText(animals[i].Position);
+                        }
+                    }
+
                     if (AudioManager.Instance != null) AudioManager.Instance.PlayScore();
                     animalsPlaced++;
                     hud.SetProgress(animalsPlaced, totalRegularToSend);
@@ -484,6 +516,43 @@ namespace SheepCircle
 
             Burst effect = Instantiate(prefab, animalParent);
             effect.Play(at, size);
+        }
+
+        void SpawnPerfectText(Vector2 at)
+        {
+            GameObject go = new GameObject("PerfectText");
+            go.transform.position = new Vector3(at.x, at.y, 0f);
+            var tmp = go.AddComponent<TMPro.TextMeshPro>();
+            tmp.text = "PERFECT!";
+            tmp.fontSize = 4f;
+            tmp.alignment = TMPro.TextAlignmentOptions.Center;
+            tmp.color = new Color(1f, 0.84f, 0f, 1f); // Gold
+            tmp.fontStyle = TMPro.FontStyles.Bold;
+            tmp.sortingOrder = 100;
+            
+            StartCoroutine(AnimatePerfectText(tmp));
+        }
+
+        System.Collections.IEnumerator AnimatePerfectText(TMPro.TextMeshPro tmp)
+        {
+            float elapsed = 0f;
+            float duration = 0.9f;
+            Vector3 startPos = tmp.transform.position;
+            Vector3 endPos = startPos + Vector3.up * 1.5f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                tmp.transform.position = Vector3.Lerp(startPos, endPos, t * t * (3f - 2f * t)); // Smoothstep
+                
+                Color c = tmp.color;
+                c.a = 1f - (t * t);
+                tmp.color = c;
+                
+                yield return null;
+            }
+            if (tmp != null) Destroy(tmp.gameObject);
         }
 
         // ----------------------------------------------------------- game state

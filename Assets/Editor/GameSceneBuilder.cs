@@ -220,7 +220,7 @@ namespace SheepCircle.EditorTools
 
             NewTiledSprite("Background", grassTile, Color.white, -20, board, new Vector2(60f, 40f));
 
-            for (int i = 0; i < 4; i++) BuildRoad(i, board);
+            for (int i = 0; i < 2; i++) BuildRoad(i, board);
 
             var ringGo = NewSprite("RingRoad", ring, RoadTint, -8, board);
             ringGo.transform.localScale = Vector3.one * (RingOuter / 0.48f);
@@ -239,7 +239,7 @@ namespace SheepCircle.EditorTools
 
             var so = new SerializedObject(gm);
             so.FindProperty("geometry.radius").floatValue = Radius;
-            so.FindProperty("geometry.laneCount").intValue = 4;
+            so.FindProperty("geometry.laneCount").intValue = 2;
             so.FindProperty("geometry.laneSplitDeg").floatValue = LaneSplit;
             so.FindProperty("geometry.roadStart").floatValue = RoadStart;
             so.FindProperty("geometry.queueSpacing").floatValue = QueueSpacing;
@@ -284,7 +284,7 @@ namespace SheepCircle.EditorTools
 
         static void BuildRoad(int lane, Transform parent)
         {
-            float angle = 90f - lane * 90f;
+            float angle = 90f - lane * 180f; // 2 lanes means 180 degrees apart
             var dir = new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad));
 
             const float inner = 2.4f;
