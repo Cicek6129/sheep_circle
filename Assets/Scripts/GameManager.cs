@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -31,29 +32,39 @@ namespace SheepCircle
         [Tooltip("Hand-authored levels. Beyond these the game generates levels procedurally.")]
         [SerializeField] LevelData[] levels = new LevelData[]
         {
+            // Level 1: 4 on ring (2 close, 2 far apart), 8 in queue
             new LevelData { 
                 ringSpeed = 35f, 
                 explicitInitialAnimals = new string[] { "Tavuk", "Koyun", "Koyun", "Inek" },
+                explicitInitialAngles  = new float[]   { 0f, 25f, 160f, 220f },
                 explicitQueueAnimals = new string[] { "Koyun", "Inek", "Koyun", "Tavuk", "Keci", "Koyun", "Tavuk", "Coban" } 
             },
+            // Level 2: 5 on ring (3 clustered at top, 2 spread at bottom), 9 in queue
             new LevelData { 
                 ringSpeed = 40f, 
                 explicitInitialAnimals = new string[] { "Keci", "Koyun", "Inek", "Tavuk", "Keci" },
+                explicitInitialAngles  = new float[]   { 0f, 30f, 55f, 180f, 270f },
                 explicitQueueAnimals = new string[] { "Inek", "Koyun", "Keci", "Coban", "Tavuk", "Inek", "Koyun", "Keci", "Tavuk" } 
             },
+            // Level 3: 6 on ring (2 pairs close + 2 loners), 10 in queue
             new LevelData { 
                 ringSpeed = 45f, 
                 explicitInitialAnimals = new string[] { "Inek", "Tavuk", "Koyun", "Koyun", "Keci", "Inek" },
+                explicitInitialAngles  = new float[]   { 10f, 35f, 120f, 150f, 240f, 310f },
                 explicitQueueAnimals = new string[] { "Koyun", "Keci", "Tavuk", "Koyun", "Coban", "Inek", "Tavuk", "Keci", "Koyun", "Inek" } 
             },
+            // Level 4: 7 on ring (4 clustered + 3 spread), 11 in queue
             new LevelData { 
                 ringSpeed = 50f, 
                 explicitInitialAnimals = new string[] { "Tavuk", "Keci", "Inek", "Koyun", "Tavuk", "Keci", "Koyun" },
+                explicitInitialAngles  = new float[]   { 0f, 22f, 50f, 80f, 170f, 250f, 320f },
                 explicitQueueAnimals = new string[] { "Inek", "Koyun", "Coban", "Keci", "Tavuk", "Inek", "Koyun", "Keci", "Tavuk", "Koyun", "Inek" } 
             },
+            // Level 5: 8 on ring (3 tight group + 2 pair + 3 spread), 12 in queue
             new LevelData { 
                 ringSpeed = 55f, 
                 explicitInitialAnimals = new string[] { "Koyun", "Inek", "Keci", "Tavuk", "Koyun", "Inek", "Keci", "Tavuk" },
+                explicitInitialAngles  = new float[]   { 5f, 28f, 55f, 130f, 155f, 210f, 280f, 340f },
                 explicitQueueAnimals = new string[] { "Tavuk", "Keci", "Inek", "Koyun", "Coban", "Tavuk", "Keci", "Inek", "Koyun", "Tavuk", "Keci", "Inek" } 
             },
             new LevelData { initialAnimalCount = 9, animalsToSend = 8, ringSpeed = 60f, allowShepherd = true },
@@ -288,12 +299,16 @@ namespace SheepCircle
         {
             if (data.explicitInitialAnimals != null && data.explicitInitialAnimals.Length > 0)
             {
+                bool hasAngles = data.explicitInitialAngles != null 
+                    && data.explicitInitialAngles.Length == data.explicitInitialAnimals.Length;
                 float angleStep = 360f / data.explicitInitialAnimals.Length;
+
                 for (int i = 0; i < data.explicitInitialAnimals.Length; i++)
                 {
+                    float angle = hasAngles ? data.explicitInitialAngles[i] : i * angleStep;
                     AnimalKind kind = FindKindByName(data.explicitInitialAnimals[i]);
                     Animal animal = Instantiate(animalPrefab, animalParent);
-                    animal.SetupAsCircling(kind, i * angleStep, geometry);
+                    animal.SetupAsCircling(kind, angle, geometry);
                     animals.Add(animal);
                 }
             }
@@ -439,7 +454,7 @@ namespace SheepCircle
             Animal animal = entryLane.Dequeue();
             if (animal == null) return;
 
-            // Shepherd exits from the top, regular animals stay on the ring.
+            // Shepherd exits from the top road, regular animals exit from the bottom.
             int exit = animal.IsShepherd ? RingGeometry.EXIT_LANE : RingGeometry.ENTRY_LANE;
             animal.Release(exit);
 
@@ -646,6 +661,10 @@ namespace SheepCircle
                 for (int j = i + 1; j < animals.Count; j++)
                 {
                     if (!animals[j].CanCrash) continue;
+
+                    // A shepherd and the animal it is herding are intentionally close.
+                    if (animals[i].IsShepherd && animals[i].Herd.Any(a => a == animals[j])) continue;
+                    if (animals[j].IsShepherd && animals[j].Herd.Any(a => a == animals[i])) continue;
 
                     // At least one of them must be merging - two animals that are
                     // already circling at the same speed can never catch each other.

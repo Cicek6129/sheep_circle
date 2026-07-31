@@ -61,8 +61,9 @@ namespace SheepCircle
         public bool IsShepherd => Kind != null && Kind.isShepherd;
 
         /// <summary>Animals on their way out are on the far side of the road and are
-        /// past caring. The shepherd never crashes, and neither does his flock.</summary>
-        public bool CanCrash => !IsShepherd && !knockedOut
+        /// past caring. Herded animals (following the shepherd) also cannot crash.</summary>
+        public bool CanCrash => !knockedOut
+                             && State != AnimalState.Herded
                              && (State == AnimalState.Entering
                               || State == AnimalState.CirclingInside
                               || State == AnimalState.OnRing);

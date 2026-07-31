@@ -24,6 +24,9 @@ namespace SheepCircle
         [Tooltip("If not empty, exactly these animals will be spawned on the ring. Leave empty for random generation.")]
         public string[] explicitInitialAnimals;
 
+        [Tooltip("Custom angles (degrees) for each initial animal. Must match explicitInitialAnimals length. Leave empty for equal spacing.")]
+        public float[] explicitInitialAngles;
+
         [Tooltip("If not empty, exactly these animals will be queued. Leave empty for random generation.")]
         public string[] explicitQueueAnimals;
     }

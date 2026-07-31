@@ -19,7 +19,7 @@ namespace SheepCircle.EditorTools
     {
         // ------------------------------------------------------------ tuning
         const float Radius = 2.6f;
-        const float LaneSplit = 14f;
+        const float LaneSplit = 0f; // Animals enter exactly at the center of the lane
         const float RoadStart = 1.0f;
         const float QueueSpacing = 1.05f;
         const float ExitDistance = 4.0f;
@@ -27,7 +27,7 @@ namespace SheepCircle.EditorTools
 
         const float RingOuter = 3.35f;
         const float RingInner = 1.90f;
-        const float RoadHalfWidth = 1.30f;
+        const float RoadHalfWidth = 1.30f; // Full width as requested
         const float CameraSize = 6.5f;
 
         const string ScenePath = "Assets/Scenes/Game.unity";
@@ -72,8 +72,9 @@ namespace SheepCircle.EditorTools
             // filled with flat colour, so they read as the same dirt and grass
             // as everything around them. The ring hole must match the island,
             // so the two are always regenerated together.
-            WriteTexturedSprite("ring", 512, "road_tile", RingOuter / 0.48f,
-                                p => Annulus(p, 0.48f, 0.48f * (RingInner / RingOuter)));
+            // The user provided a custom ring.png, so we should NOT overwrite it!
+            // WriteTexturedSprite("ring", 512, "road_tile", RingOuter / 0.48f,
+            //                     p => Annulus(p, 0.48f, 0.48f * (RingInner / RingOuter)));
             WriteTexturedSprite("island", 512, "grass_tile", RingInner / 0.47f,
                                 p => Vector2.Distance(p, new Vector2(0.5f, 0.5f)) - 0.47f);
 
@@ -222,8 +223,15 @@ namespace SheepCircle.EditorTools
 
             for (int i = 0; i < 2; i++) BuildRoad(i, board);
 
-            var ringGo = NewSprite("RingRoad", ring, RoadTint, -8, board);
-            ringGo.transform.localScale = Vector3.one * (RingOuter / 0.48f);
+            var ringGo = NewSprite("RingRoad", ring, RoadTint, -5, board); // -5 ensures it's above the straight road (-10)
+            
+            // The user provided a custom 1024x1024 ring image. 
+            // The dirt path is between pixel radii 243 and 492. Center is at ~367.5px.
+            // 367.5 / 512 = 0.7177. So the dirt path is at 71.77% of the image radius.
+            float dirtFraction = 0.7177f;
+            float desiredRadius = Radius / dirtFraction;
+            float nativeRadius = (ring.texture.width / 2f) / ring.pixelsPerUnit;
+            ringGo.transform.localScale = Vector3.one * (desiredRadius / nativeRadius);
 
             var islandGo = NewSprite("Island", island, Color.white, -6, board);
             islandGo.transform.localScale = Vector3.one * (RingInner / 0.47f);
@@ -274,7 +282,7 @@ namespace SheepCircle.EditorTools
             // showHead is off for everyone: the drawn sprites include the head.
             //      slot  name      body      bodyColour   head   size  radius enter weight sheph ringMul laps
             SetKind(kinds, 0, "Koyun", sheep,    Color.white, false, 0.88f, 0.40f, 1.00f, 5.0f, false, 1.00f, 0);
-            SetKind(kinds, 1, "Inek",  cow,      Color.white, false, 1.22f, 0.55f, 0.62f, 2.0f, false, 1.00f, 0);
+            SetKind(kinds, 1, "Inek",  cow,      Color.white, false, 1.22f, 0.55f, 0.85f, 2.0f, false, 1.00f, 0);
             SetKind(kinds, 2, "Keci",  goat,     Color.white, false, 0.74f, 0.33f, 1.30f, 3.0f, false, 1.00f, 0);
             SetKind(kinds, 3, "Tavuk", chicken,  Color.white, false, 0.58f, 0.26f, 1.75f, 2.0f, false, 1.00f, 0);
             SetKind(kinds, 4, "Coban", shepherd, Color.white, false, 1.08f, 0.48f, 1.10f, 0.9f, true,  1.00f, 0);
@@ -284,7 +292,7 @@ namespace SheepCircle.EditorTools
 
         static void BuildRoad(int lane, Transform parent)
         {
-            float angle = 90f - lane * 180f; // 2 lanes means 180 degrees apart
+            float angle = 90f - lane * 180f; // lane 0 = top (90°), lane 1 = bottom (270°)
             var dir = new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad));
 
             const float inner = 2.4f;
@@ -297,12 +305,15 @@ namespace SheepCircle.EditorTools
             go.transform.position = dir * mid;
             go.transform.rotation = Quaternion.Euler(0f, 0f, angle);
 
-            var visual = NewTiledSprite("Road", roadTile, RoadTint, -10, go.transform,
-                                        new Vector2(length, RoadHalfWidth * 2f));
+            // roadTile is 512px, PixelsPerUnit is 128, so native height is 4 units.
+            // To make it RoadHalfWidth*2 (2.6 units) high without cropping in Tiled mode,
+            // we give the SpriteRenderer its native height and scale the transform down.
+            float nativeHeight = roadTile.bounds.size.y; 
+            float scaleY = (RoadHalfWidth * 2f) / nativeHeight;
 
-            // Divider between the incoming and outgoing sides of the road.
-            var line = NewSprite("Divider", square, LineColor, -9, go.transform);
-            line.transform.localScale = new Vector3(length, 0.09f, 1f);
+            var visual = NewTiledSprite("Road", roadTile, RoadTint, -10, go.transform,
+                                        new Vector2(length, nativeHeight));
+            visual.transform.localScale = new Vector3(1f, scaleY, 1f);
 
             var box = go.AddComponent<BoxCollider2D>();
             box.size = new Vector2(length, RoadHalfWidth * 2f);
