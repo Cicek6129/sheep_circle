@@ -35,7 +35,7 @@ namespace SheepCircle
             if (hint != null)
             {
                 var hintTMP = hint.GetComponent<TextMeshProUGUI>();
-                if (hintTMP != null) hintTMP.text = "Tıkla veya Space -> hayvanı gönder";
+                if (hintTMP != null) hintTMP.text = "Göndermek için DOKUN!";
             }
 
             // Create LevelText

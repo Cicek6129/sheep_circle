@@ -126,6 +126,8 @@ namespace SheepCircle
         void Awake()
         {
             if (camera == null) camera = Camera.main;
+            Application.targetFrameRate = 60;
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;
         }
 
         void Start()
@@ -197,6 +199,22 @@ namespace SheepCircle
                         }
                     }
                     return; // Eat the tap if level select is open
+                }
+            }
+
+            // Android Back Button / Escape handling
+            Keyboard keys = Keyboard.current;
+            if (keys != null && keys.escapeKey.wasPressedThisFrame && hud != null)
+            {
+                if (hud.IsLevelSelectActive)
+                {
+                    hud.HideLevelSelect();
+                    return;
+                }
+                else if (!waitingToStart && !gameOver && !levelComplete)
+                {
+                    hud.ShowLevelSelect(PlayerPrefs.GetInt(BestLevelKey, 0));
+                    return;
                 }
             }
 
@@ -424,10 +442,12 @@ namespace SheepCircle
                 TryRelease();
             }
 
+#if UNITY_EDITOR || UNITY_STANDALONE
             Keyboard keys = Keyboard.current;
             if (keys == null) return;
 
             if (keys.spaceKey.wasPressedThisFrame) TryRelease();
+#endif
         }
 
         /// <summary>Dismisses the title card and, later, the game-over card. The
@@ -440,8 +460,12 @@ namespace SheepCircle
                 return true;
             }
 
+#if UNITY_EDITOR || UNITY_STANDALONE
             Keyboard keys = Keyboard.current;
             return keys != null && (keys.rKey.wasPressedThisFrame || keys.spaceKey.wasPressedThisFrame);
+#else
+            return false;
+#endif
         }
 
         void TryRelease()
