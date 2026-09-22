@@ -234,7 +234,7 @@ namespace SheepCircle.Editor
                         lcSub.anchorMin = new Vector2(0.5f, 0.5f);
                         lcSub.anchorMax = new Vector2(0.5f, 0.5f);
                         lcSub.pivot = new Vector2(0.5f, 0.5f);
-                        lcSub.anchoredPosition = new Vector2(0f, -150f);
+                        lcSub.anchoredPosition = new Vector2(0f, -220f);
                         lcSub.sizeDelta = new Vector2(920f, 80f);
                         var tmp = lcSub.GetComponent<TextMeshProUGUI>();
                         if (tmp != null)
@@ -246,6 +246,35 @@ namespace SheepCircle.Editor
                             tmp.alignment = TextAlignmentOptions.Center;
                         }
                         modified = true;
+                    }
+
+                    // Next Level button portrait positioning
+                    var nextBtn = lcPanel.Find("NextLevelButton") as RectTransform;
+                    if (nextBtn != null)
+                    {
+                        nextBtn.anchorMin = new Vector2(0.5f, 0.5f);
+                        nextBtn.anchorMax = new Vector2(0.5f, 0.5f);
+                        nextBtn.pivot = new Vector2(0.5f, 0.5f);
+                        nextBtn.anchoredPosition = new Vector2(0f, -100f);
+                        nextBtn.sizeDelta = new Vector2(380f, 130f);
+                        modified = true;
+                    }
+                }
+
+                // 7. Ensure GameOver panel has proper portrait layout for new card
+                var goPanel2 = hud.transform.Find("GameOver");
+                if (goPanel2 != null)
+                {
+                    var retryBtn = goPanel2.Find("Card/RetryButton") as RectTransform;
+                    if (retryBtn == null) retryBtn = goPanel2.Find("RetryButton") as RectTransform;
+                    if (retryBtn != null)
+                    {
+                        // Ensure minimum touch size
+                        if (retryBtn.sizeDelta.x < 380f)
+                        {
+                            retryBtn.sizeDelta = new Vector2(380f, retryBtn.sizeDelta.y);
+                            modified = true;
+                        }
                     }
                 }
             }

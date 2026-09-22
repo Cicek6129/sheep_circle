@@ -240,15 +240,43 @@ namespace SheepCircle
             {
                 TickAnimals(dt);
                 levelCompleteTimer -= dt;
-                if (levelCompleteTimer <= 0f && AnyPressed(pointer))
-                    LoadLevel(currentLevel + 1);
+                if (levelCompleteTimer <= 0f && pointer != null && pointer.press.wasPressedThisFrame)
+                {
+                    Vector2 pos = pointer.position.ReadValue();
+                    if (hud.IsPointerOverNextLevelButton(pos))
+                    {
+                        hud.TriggerButtonTap(hud.GetComponentInChildren<RectTransform>());
+                        // Find and tap the next level button's MobileButton
+                        var nlBtn = hud.transform.Find("LevelComplete")?.Find("NextLevelButton");
+                        if (nlBtn != null)
+                        {
+                            var mb = nlBtn.GetComponent<MobileButton>();
+                            if (mb != null) mb.Tap();
+                        }
+                        LoadLevel(currentLevel + 1);
+                    }
+                }
                 return;
             }
 
             if (gameOver)
             {
                 gameOverTimer -= dt;
-                if (gameOverTimer <= 0f && AnyPressed(pointer)) RestartLevel();
+                if (gameOverTimer <= 0f && pointer != null && pointer.press.wasPressedThisFrame)
+                {
+                    Vector2 pos = pointer.position.ReadValue();
+                    if (hud.IsPointerOverRetryButton(pos))
+                    {
+                        // Trigger the retry button animation
+                        var retryBtn = hud.transform.Find("GameOver")?.Find("RetryButton");
+                        if (retryBtn != null)
+                        {
+                            var mb = retryBtn.GetComponent<MobileButton>();
+                            if (mb != null) mb.Tap();
+                        }
+                        RestartLevel();
+                    }
+                }
                 return;
             }
 

@@ -364,7 +364,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 0
   m_SpriteSortPoint: 0
---- !u!1 &8421714727856694574
+--- !u!1 &6387716727274641936
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -372,70 +372,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 8014923335147913131}
-  - component: {fileID: 9090842921028294662}
-  m_Layer: 0
-  m_Name: Animal
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &8014923335147913131
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8421714727856694574}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 533254702275144849}
-  - {fileID: 6378086306043976746}
-  - {fileID: 9214464055194343660}
-  - {fileID: 3956749310356975632}
-  - {fileID: 2886906297352407597}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9090842921028294662
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8421714727856694574}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c092521c134cdbf41b85b7f19d7eed71, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SheepCircle.Animal
-  body: {fileID: 5781021889816291757}
-  patch: {fileID: 8003526529651619810}
-  head: {fileID: 3424630480126438109}
-  shadow: {fileID: 3216458580221156852}
-  baseEnterSpeed: 3.4
-  baseExitSpeed: 3.4
-  queueSlideSpeed: 3.2
-  herdSpacing: 0.95
-  dizzy: {fileID: 3060488006650499354}
-  koTilt: 20
-  koScale: 1.25
-  koRecoil: 0.14
---- !u!1 &8477958435659608703
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2886906297352407597}
-  - component: {fileID: 3060488006650499354}
-  - component: {fileID: 5857564733058039345}
+  - component: {fileID: 5016823182216494694}
+  - component: {fileID: 7598011204749250507}
+  - component: {fileID: 8472659613452708253}
   m_Layer: 0
   m_Name: Dizzy
   m_TagString: Untagged
@@ -443,13 +382,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 0
---- !u!4 &2886906297352407597
+--- !u!4 &5016823182216494694
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8477958435659608703}
+  m_GameObject: {fileID: 6387716727274641936}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.36, y: 0.3, z: 0}
@@ -458,14 +397,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8014923335147913131}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &3060488006650499354
+--- !u!212 &7598011204749250507
 SpriteRenderer:
   serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8477958435659608703}
+  m_GameObject: {fileID: 6387716727274641936}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -517,16 +456,77 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &5857564733058039345
+--- !u!114 &8472659613452708253
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8477958435659608703}
+  m_GameObject: {fileID: 6387716727274641936}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d35049a342ed34e4aac039b434a1b1f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SheepCircle.Spin
   degreesPerSecond: 130
+--- !u!1 &8421714727856694574
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8014923335147913131}
+  - component: {fileID: 9090842921028294662}
+  m_Layer: 0
+  m_Name: Animal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8014923335147913131
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8421714727856694574}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 533254702275144849}
+  - {fileID: 6378086306043976746}
+  - {fileID: 9214464055194343660}
+  - {fileID: 3956749310356975632}
+  - {fileID: 5016823182216494694}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9090842921028294662
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8421714727856694574}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c092521c134cdbf41b85b7f19d7eed71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SheepCircle.Animal
+  body: {fileID: 5781021889816291757}
+  patch: {fileID: 8003526529651619810}
+  head: {fileID: 3424630480126438109}
+  shadow: {fileID: 3216458580221156852}
+  baseEnterSpeed: 3.4
+  baseExitSpeed: 3.4
+  queueSlideSpeed: 3.2
+  herdSpacing: 0.95
+  dizzy: {fileID: 7598011204749250507}
+  koTilt: 20
+  koScale: 1.25
+  koRecoil: 0.14

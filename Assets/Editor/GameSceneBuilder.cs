@@ -356,10 +356,11 @@ namespace SheepCircle.EditorTools
             Anchor(best.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -205f), new Vector2(600f, 60f));
 
             var hint = NewText("Hint", playHud.transform,
-                               "Yola tıkla -> sıradaki hayvan çembere girsin   |   1-4 tuşları", 34f,
+                               "Gondermek icin DOKUN!", 34f,
                                new Color(1f, 1f, 1f, 0.65f));
             Anchor(hint.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 55f), new Vector2(1400f, 60f));
 
+            // ---- Game Over Panel (mobile card style) ----
             var panel = new GameObject("GameOver", typeof(RectTransform));
             panel.transform.SetParent(canvasGo.transform, false);
             var panelRect = panel.GetComponent<RectTransform>();
@@ -368,13 +369,41 @@ namespace SheepCircle.EditorTools
             panelRect.offsetMin = Vector2.zero;
             panelRect.offsetMax = Vector2.zero;
             panel.AddComponent<Image>().color = new Color(0.05f, 0.08f, 0.06f, 0.78f);
+            var gameOverCG = panel.AddComponent<CanvasGroup>();
+            gameOverCG.alpha = 0f;
 
-            var title = NewText("Title", panel.transform, "", 84f, new Color(1f, 0.83f, 0.35f));
-            Anchor(title.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 110f), new Vector2(1600f, 200f));
+            // Wooden card background
+            Sprite wood = LoadSprite("panel_wood");
+            Sprite green = LoadSprite("button_green");
+
+            const float GOCardWidth = 600f;
+            float goCardH = GOCardWidth / Aspect(wood, 1.39f);
+
+            var goCard = NewImage("Card", panel.transform, wood, new Color(1f, 1f, 1f, 0.97f));
+            Anchor(goCard.rectTransform, Middle, new Vector2(0f, 40f), new Vector2(GOCardWidth, goCardH));
+
+            var title = NewText("Title", goCard.transform, "", 60f, new Color(1f, 0.83f, 0.35f));
+            Anchor(title.rectTransform, Middle, new Vector2(0f, goCardH * 0.25f), new Vector2(GOCardWidth - 60f, 140f));
             title.fontStyle = FontStyles.Bold;
+            title.enableWordWrapping = true;
+            title.enableAutoSizing = true;
+            title.fontSizeMin = 28f;
+            title.fontSizeMax = 60f;
 
-            var bodyText = NewText("Body", panel.transform, "", 46f, Color.white);
-            Anchor(bodyText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -80f), new Vector2(1400f, 260f));
+            var bodyText = NewText("Body", goCard.transform, "", 42f, Color.white);
+            Anchor(bodyText.rectTransform, Middle, new Vector2(0f, -goCardH * 0.05f), new Vector2(GOCardWidth - 60f, 100f));
+
+            // Retry button (green, with MobileButton)
+            const float RetryBtnWidth = 380f;
+            float retryBtnH = RetryBtnWidth / Aspect(green, 2.9f);
+            var retryBtn = NewImage("RetryButton", goCard.transform, green, Color.white);
+            Anchor(retryBtn.rectTransform, Middle, new Vector2(0f, -goCardH * 0.32f), new Vector2(RetryBtnWidth, retryBtnH));
+            var retryMB = retryBtn.gameObject.AddComponent<MobileButton>();
+            SetMobileButtonDefaults(retryMB);
+
+            var retryLabel = NewText("Label", retryBtn.transform, "TEKRAR DENE", 48f, Color.white);
+            retryLabel.fontStyle = FontStyles.Bold;
+            Anchor(retryLabel.rectTransform, Middle, new Vector2(0f, 2f), new Vector2(RetryBtnWidth - 30f, retryBtnH));
 
             var audioMgr = new GameObject("AudioManager");
             audioMgr.AddComponent<AudioManager>();
@@ -397,6 +426,8 @@ namespace SheepCircle.EditorTools
             so.FindProperty("gameOverPanel").objectReferenceValue = panel;
             so.FindProperty("gameOverTitle").objectReferenceValue = title;
             so.FindProperty("gameOverBody").objectReferenceValue = bodyText;
+            so.FindProperty("gameOverCanvasGroup").objectReferenceValue = gameOverCG;
+            so.FindProperty("retryButton").objectReferenceValue = retryBtn.rectTransform;
             so.FindProperty("playHud").objectReferenceValue = playHud;
             so.FindProperty("startPanel").objectReferenceValue = start;
             so.FindProperty("startButton").objectReferenceValue = playButton;
@@ -504,8 +535,11 @@ namespace SheepCircle.EditorTools
             var button = NewImage("PlayButton", start.transform, green, Color.white);
             Anchor(button.rectTransform, Middle, new Vector2(0f, buttonY), new Vector2(ButtonWidth, buttonH));
             playButton = button.rectTransform;
+            // MobileButton with idle pulse for the main CTA
+            var playMB = button.gameObject.AddComponent<MobileButton>();
+            SetMobileButtonDefaults(playMB, true);  // idlePulse = true
 
-            var label = NewText("Label", button.transform, "BAŞLA", 62f, Color.white);
+            var label = NewText("Label", button.transform, "BASLA", 62f, Color.white);
             label.fontStyle = FontStyles.Bold;
             Anchor(label.rectTransform, Middle, new Vector2(0f, 2f), new Vector2(ButtonWidth - 40f, buttonH));
 
@@ -515,7 +549,10 @@ namespace SheepCircle.EditorTools
             soundBtn.transform.SetParent(start.transform, false);
             soundImg = soundBtn.AddComponent<Image>();
             if (soundOn != null) soundImg.sprite = soundOn;
-            Anchor(soundImg.rectTransform, new Vector2(1f, 1f), new Vector2(-70f, -70f), new Vector2(80f, 80f));
+            // Bigger touch target for mobile (120×120)
+            Anchor(soundImg.rectTransform, new Vector2(1f, 1f), new Vector2(-70f, -70f), new Vector2(120f, 120f));
+            var soundMB = soundBtn.AddComponent<MobileButton>();
+            SetMobileButtonDefaults(soundMB);
 
             return start;
         }
@@ -528,11 +565,14 @@ namespace SheepCircle.EditorTools
             menuGo.transform.SetParent(canvas, false);
             menuBtn = menuGo.AddComponent<Image>();
             menuBtn.sprite = LoadSprite("button_green");
-            Anchor(menuBtn.rectTransform, new Vector2(0f, 1f), new Vector2(80f, -80f), new Vector2(100f, 100f));
+            // Bigger touch target for mobile (120×120)
+            Anchor(menuBtn.rectTransform, new Vector2(0f, 1f), new Vector2(80f, -80f), new Vector2(120f, 120f));
+            var menuMB = menuGo.AddComponent<MobileButton>();
+            SetMobileButtonDefaults(menuMB);
             
             var menuText = NewText("MenuText", menuGo.transform, "MENU", 28f, Color.white);
             menuText.fontStyle = FontStyles.Bold;
-            Anchor(menuText.rectTransform, Middle, new Vector2(0f, 0f), new Vector2(100f, 100f));
+            Anchor(menuText.rectTransform, Middle, new Vector2(0f, 0f), new Vector2(120f, 120f));
 
             var panelGo = new GameObject("LevelSelectPanel", typeof(RectTransform));
             panelGo.transform.SetParent(canvas, false);
@@ -552,7 +592,7 @@ namespace SheepCircle.EditorTools
             var card = NewImage("Card", panelGo.transform, wood, new Color(1f, 1f, 1f, 0.97f));
             Anchor(card.rectTransform, Middle, Vector2.zero, new Vector2(CardWidth, cardH));
 
-            var title = NewText("Title", card.transform, "ANA MENÜ", 70f, new Color(1f, 0.97f, 0.90f));
+            var title = NewText("Title", card.transform, "ANA MENU", 70f, new Color(1f, 0.97f, 0.90f));
             title.fontStyle = FontStyles.Bold;
             Anchor(title.rectTransform, Middle, new Vector2(0f, cardH * 0.4f), new Vector2(CardWidth, 100f));
 
@@ -565,8 +605,9 @@ namespace SheepCircle.EditorTools
             float startY = cardH * 0.15f;
             float spacingX = CardWidth * 0.7f / (cols - 1);
             float spacingY = -cardH * 0.45f / (rows - 1);
-            float btnW = spacingX * 0.8f;
-            float btnH = Mathf.Abs(spacingY) * 0.7f;
+            // Bigger buttons for mobile touch targets
+            float btnW = Mathf.Max(spacingX * 0.85f, 120f);
+            float btnH = Mathf.Max(Mathf.Abs(spacingY) * 0.75f, 120f);
 
             for (int i = 0; i < cols * rows; i++)
             {
@@ -576,6 +617,9 @@ namespace SheepCircle.EditorTools
                 var btn = NewImage($"LevelBtn_{i}", card.transform, green, Color.white);
                 Anchor(btn.rectTransform, Middle, new Vector2(startX + c * spacingX, startY + r * spacingY), new Vector2(btnW, btnH));
                 lvlImgs[i] = btn;
+                // MobileButton for each level button
+                var lvlMB = btn.gameObject.AddComponent<MobileButton>();
+                SetMobileButtonDefaults(lvlMB);
 
                 var txt = NewText($"LevelTxt_{i}", btn.transform, (i + 1).ToString(), btnH * 0.5f, Color.white);
                 txt.fontStyle = FontStyles.Bold;
@@ -587,6 +631,24 @@ namespace SheepCircle.EditorTools
         }
 
         // ----------------------------------------------------------- helpers
+
+        /// <summary>Configures a MobileButton component with sensible mobile defaults.</summary>
+        static void SetMobileButtonDefaults(MobileButton mb, bool withIdlePulse = false)
+        {
+            var so = new SerializedObject(mb);
+            so.FindProperty("pressedScale").floatValue = 0.88f;
+            so.FindProperty("bounceScale").floatValue = 1.08f;
+            so.FindProperty("pressDuration").floatValue = 0.08f;
+            so.FindProperty("releaseDuration").floatValue = 0.18f;
+            so.FindProperty("idlePulse").boolValue = withIdlePulse;
+            so.FindProperty("pulseAmplitude").floatValue = 0.035f;
+            so.FindProperty("pulseSpeed").floatValue = 2.5f;
+            so.FindProperty("minimumTouchSize").floatValue = 120f;
+            so.FindProperty("hapticOnPress").boolValue = true;
+            so.FindProperty("playSoundOnPress").boolValue = true;
+            so.FindProperty("interactable").boolValue = true;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
 
         static readonly Vector2 Middle = new Vector2(0.5f, 0.5f);
 

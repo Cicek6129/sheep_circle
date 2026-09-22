@@ -74,6 +74,8 @@ namespace SheepCircle
             lcRect.sizeDelta = Vector2.zero;
             var lcImage = lcGO.AddComponent<Image>();
             lcImage.color = new Color(0f, 0f, 0f, 0.65f);
+            var lcCanvasGroup = lcGO.AddComponent<CanvasGroup>();
+            lcCanvasGroup.alpha = 0f;
             lcGO.SetActive(false);
 
             // LevelComplete title
@@ -82,26 +84,30 @@ namespace SheepCircle
             lcTitleRect.anchorMin = new Vector2(0.5f, 0.5f);
             lcTitleRect.anchorMax = new Vector2(0.5f, 0.5f);
             lcTitleRect.pivot = new Vector2(0.5f, 0.5f);
-            lcTitleRect.anchoredPosition = new Vector2(0f, 0f);
+            lcTitleRect.anchoredPosition = new Vector2(0f, 40f);
             lcTitleRect.sizeDelta = new Vector2(600f, 120f);
             var lcTitleTMP = lcTitleGO.AddComponent<TextMeshProUGUI>();
             lcTitleTMP.text = "LEVEL TAMAMLANDI!";
             lcTitleTMP.fontSize = 48;
             lcTitleTMP.alignment = TextAlignmentOptions.Center;
             lcTitleTMP.color = new Color(0.2f, 1f, 0.3f, 1f);
+            lcTitleTMP.enableWordWrapping = true;
+            lcTitleTMP.enableAutoSizing = true;
+            lcTitleTMP.fontSizeMin = 28f;
+            lcTitleTMP.fontSizeMax = 48f;
 
-            // LevelComplete stars
+            // LevelComplete stars (bigger for mobile - 120px)
             var starContGO = CreateUIObject("Stars", lcGO.transform);
             var starContRect = starContGO.GetComponent<RectTransform>();
             starContRect.anchorMin = new Vector2(0.5f, 0.5f);
             starContRect.anchorMax = new Vector2(0.5f, 0.5f);
             starContRect.pivot = new Vector2(0.5f, 0.5f);
-            starContRect.anchoredPosition = new Vector2(0f, 100f);
-            starContRect.sizeDelta = new Vector2(300f, 100f);
+            starContRect.anchoredPosition = new Vector2(0f, 160f);
+            starContRect.sizeDelta = new Vector2(420f, 120f);
             
             var hlg = starContGO.AddComponent<HorizontalLayoutGroup>();
             hlg.childAlignment = TextAnchor.MiddleCenter;
-            hlg.spacing = 20f;
+            hlg.spacing = 30f;
             hlg.childControlWidth = false;
             hlg.childControlHeight = false;
 
@@ -111,12 +117,52 @@ namespace SheepCircle
             for (int i=0; i<3; i++) {
                 var starGO = CreateUIObject("Star" + i, starContGO.transform);
                 var starRect = starGO.GetComponent<RectTransform>();
-                starRect.sizeDelta = new Vector2(80f, 80f);
+                starRect.sizeDelta = new Vector2(120f, 120f);
                 var img = starGO.AddComponent<Image>();
                 img.sprite = starSprite;
                 img.color = new Color(0.3f, 0.3f, 0.3f, 1f);
                 starImages[i] = img;
             }
+
+            // Next Level button (green, mobile style)
+            var greenSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/button_green.png");
+            var nextBtnGO = CreateUIObject("NextLevelButton", lcGO.transform);
+            var nextBtnRect = nextBtnGO.GetComponent<RectTransform>();
+            nextBtnRect.anchorMin = new Vector2(0.5f, 0.5f);
+            nextBtnRect.anchorMax = new Vector2(0.5f, 0.5f);
+            nextBtnRect.pivot = new Vector2(0.5f, 0.5f);
+            nextBtnRect.anchoredPosition = new Vector2(0f, -100f);
+            nextBtnRect.sizeDelta = new Vector2(380f, 130f);
+            var nextBtnImg = nextBtnGO.AddComponent<Image>();
+            nextBtnImg.sprite = greenSprite;
+            nextBtnImg.color = Color.white;
+            var nextMB = nextBtnGO.AddComponent<MobileButton>();
+            // Configure MobileButton via serialized fields
+            var nextMBSo = new SerializedObject(nextMB);
+            nextMBSo.FindProperty("pressedScale").floatValue = 0.88f;
+            nextMBSo.FindProperty("bounceScale").floatValue = 1.08f;
+            nextMBSo.FindProperty("pressDuration").floatValue = 0.08f;
+            nextMBSo.FindProperty("releaseDuration").floatValue = 0.18f;
+            nextMBSo.FindProperty("idlePulse").boolValue = true;
+            nextMBSo.FindProperty("pulseAmplitude").floatValue = 0.035f;
+            nextMBSo.FindProperty("pulseSpeed").floatValue = 2.5f;
+            nextMBSo.FindProperty("minimumTouchSize").floatValue = 120f;
+            nextMBSo.FindProperty("hapticOnPress").boolValue = true;
+            nextMBSo.FindProperty("playSoundOnPress").boolValue = true;
+            nextMBSo.FindProperty("interactable").boolValue = true;
+            nextMBSo.ApplyModifiedPropertiesWithoutUndo();
+
+            var nextLabelGO = CreateUIObject("Label", nextBtnGO.transform);
+            var nextLabelRect = nextLabelGO.GetComponent<RectTransform>();
+            nextLabelRect.anchorMin = Vector2.zero;
+            nextLabelRect.anchorMax = Vector2.one;
+            nextLabelRect.sizeDelta = Vector2.zero;
+            var nextLabelTMP = nextLabelGO.AddComponent<TextMeshProUGUI>();
+            nextLabelTMP.text = "SONRAKI";
+            nextLabelTMP.fontSize = 48;
+            nextLabelTMP.fontStyle = FontStyles.Bold;
+            nextLabelTMP.alignment = TextAlignmentOptions.Center;
+            nextLabelTMP.color = Color.white;
 
             // LevelComplete subtitle
             var lcSubGO = CreateUIObject("LevelCompleteSubtitle", lcGO.transform);
@@ -124,10 +170,10 @@ namespace SheepCircle
             lcSubRect.anchorMin = new Vector2(0.5f, 0.5f);
             lcSubRect.anchorMax = new Vector2(0.5f, 0.5f);
             lcSubRect.pivot = new Vector2(0.5f, 0.5f);
-            lcSubRect.anchoredPosition = new Vector2(0f, -30f);
+            lcSubRect.anchoredPosition = new Vector2(0f, -180f);
             lcSubRect.sizeDelta = new Vector2(400f, 50f);
             var lcSubTMP = lcSubGO.AddComponent<TextMeshProUGUI>();
-            lcSubTMP.text = "Devam etmek için tıkla";
+            lcSubTMP.text = "";
             lcSubTMP.fontSize = 24;
             lcSubTMP.alignment = TextAlignmentOptions.Center;
             lcSubTMP.color = Color.white;
@@ -140,6 +186,8 @@ namespace SheepCircle
             typeof(HUD).GetField("levelCompletePanel", flags).SetValue(hud, lcGO);
             typeof(HUD).GetField("levelCompleteTitle", flags).SetValue(hud, lcTitleTMP);
             typeof(HUD).GetField("stars", flags).SetValue(hud, starImages);
+            typeof(HUD).GetField("levelCompleteCanvasGroup", flags).SetValue(hud, lcCanvasGroup);
+            typeof(HUD).GetField("nextLevelButton", flags).SetValue(hud, nextBtnRect);
             EditorUtility.SetDirty(hud);
 
             // Rename Lane2 to EntryLane, Lane0 to ExitLane for clarity

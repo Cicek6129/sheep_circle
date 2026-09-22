@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 
@@ -11,6 +12,16 @@ namespace SheepCircle
         [SerializeField] GameObject gameOverPanel;
         [SerializeField] TMP_Text gameOverTitle;
         [SerializeField] TMP_Text gameOverBody;
+
+        [Header("Mobile Panels")]
+        [Tooltip("CanvasGroup on the game-over panel for fade animation.")]
+        [SerializeField] CanvasGroup gameOverCanvasGroup;
+        [Tooltip("CanvasGroup on the level-complete panel for fade animation.")]
+        [SerializeField] CanvasGroup levelCompleteCanvasGroup;
+        [Tooltip("The retry button on the game-over screen.")]
+        [SerializeField] RectTransform retryButton;
+        [Tooltip("The next-level button on the level-complete screen.")]
+        [SerializeField] RectTransform nextLevelButton;
 
         [Header("Title")]
         [Tooltip("Score, best and the control hint. Hidden while the title card " +
@@ -39,12 +50,8 @@ namespace SheepCircle
 
         void Update()
         {
-            // Nothing on the title card is clickable - a tap anywhere starts the
-            // round - so the button breathes to show it is waiting on the player.
-            if (startButton == null || startPanel == null || !startPanel.activeSelf) return;
-
-            float s = 1f + Mathf.Sin(Time.unscaledTime * 3.1f) * 0.035f;
-            startButton.localScale = new Vector3(s, s, 1f);
+            // The start button's idle pulse is now handled by MobileButton.
+            // Nothing else needs per-frame work here.
         }
 
         public void ShowStart(int best)
@@ -98,22 +105,43 @@ namespace SheepCircle
                     }
                 }
             }
+
+            if (levelCompleteCanvasGroup != null && levelCompletePanel != null)
+                StartCoroutine(AnimatePanelIn(levelCompleteCanvasGroup, levelCompletePanel.GetComponent<RectTransform>()));
         }
 
         public void HideLevelComplete()
         {
+            if (levelCompleteCanvasGroup != null)
+            {
+                levelCompleteCanvasGroup.alpha = 0f;
+                levelCompleteCanvasGroup.interactable = false;
+                levelCompleteCanvasGroup.blocksRaycasts = false;
+            }
             if (levelCompletePanel != null) levelCompletePanel.SetActive(false);
         }
 
         // ----------------------------------------------------------- game over
 
-        public void HideGameOver() => gameOverPanel.SetActive(false);
+        public void HideGameOver()
+        {
+            if (gameOverCanvasGroup != null)
+            {
+                gameOverCanvasGroup.alpha = 0f;
+                gameOverCanvasGroup.interactable = false;
+                gameOverCanvasGroup.blocksRaycasts = false;
+            }
+            gameOverPanel.SetActive(false);
+        }
 
         public void ShowGameOver(string reason, int placed)
         {
             gameOverPanel.SetActive(true);
             gameOverTitle.text = reason;
-            gameOverBody.text = $"{placed} hayvan yerleşti\n\nTekrar için dokun";
+            gameOverBody.text = $"{placed} hayvan yerlesti";
+
+            if (gameOverCanvasGroup != null)
+                StartCoroutine(AnimatePanelIn(gameOverCanvasGroup, gameOverPanel.GetComponent<RectTransform>()));
         }
 
         public void ToggleSound()
@@ -195,6 +223,64 @@ namespace SheepCircle
                 }
             }
             return -1;
+        }
+
+        // ----------------------------------------------------------- mobile buttons
+
+        public bool IsPointerOverRetryButton(Vector2 screenPos)
+        {
+            if (retryButton == null || !gameOverPanel.activeInHierarchy) return false;
+            return RectTransformUtility.RectangleContainsScreenPoint(retryButton, screenPos, null);
+        }
+
+        public bool IsPointerOverNextLevelButton(Vector2 screenPos)
+        {
+            if (nextLevelButton == null || levelCompletePanel == null || !levelCompletePanel.activeInHierarchy) return false;
+            return RectTransformUtility.RectangleContainsScreenPoint(nextLevelButton, screenPos, null);
+        }
+
+        /// <summary>Triggers the MobileButton tap animation on the given RectTransform, if it has one.</summary>
+        public void TriggerButtonTap(RectTransform button)
+        {
+            if (button == null) return;
+            var mb = button.GetComponent<MobileButton>();
+            if (mb != null) mb.Tap();
+        }
+
+        // ----------------------------------------------------------- panel animation
+
+        /// <summary>Fade + scale entrance animation for overlay panels.</summary>
+        IEnumerator AnimatePanelIn(CanvasGroup group, RectTransform panelRect)
+        {
+            if (group == null) yield break;
+
+            const float duration = 0.3f;
+            Vector3 targetScale = Vector3.one;
+
+            group.alpha = 0f;
+            group.interactable = false;
+            group.blocksRaycasts = false;
+            if (panelRect != null) panelRect.localScale = Vector3.one * 0.85f;
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                // Ease-out cubic
+                float ease = 1f - (1f - t) * (1f - t) * (1f - t);
+
+                group.alpha = ease;
+                if (panelRect != null)
+                    panelRect.localScale = Vector3.LerpUnclamped(Vector3.one * 0.85f, targetScale, ease);
+
+                yield return null;
+            }
+
+            group.alpha = 1f;
+            group.interactable = true;
+            group.blocksRaycasts = true;
+            if (panelRect != null) panelRect.localScale = targetScale;
         }
     }
 }
